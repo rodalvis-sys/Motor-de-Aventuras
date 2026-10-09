@@ -661,29 +661,45 @@ else if(['var','timer','turnos','puntos'].includes(k)){let m=v.match(/^(.*?)\s*(
 if(!m)r=k=='timer'?val!==null:!!val;else if(val===null)r=false;else{let n=+m[3],o=m[2];r=o=='>='?val>=n:o=='<='?val<=n:o=='>'?val>n:o=='<'?val<n:val==n}}
 else return true;
 return r!=ng},
-chk:t=>RU.L(t).every(l=>RU.ok(RU.sub(l))),
-do:l=>{let i=l.indexOf(':');if(i<0)return;let k=nz(l.slice(0,i)),v=l.slice(i+1).trim(),a=v.split('>').map(s=>s.trim()),x,rr;
-if(k=='di')out(v);else if(k=='activar')RU.F()[nz(v)]=1;else if(k=='desactivar')delete RU.F()[nz(v)];
-else if(k=='dar'){if(x=RU.item(v))RU.mv(x.id,'inv')}
-else if(k=='quitar'||k=='ocultar'){if(x=RU.item(v))RU.rm(x.id)}
-else if(k=='mover'){x=RU.item(a[0]);if(x){if(nz(a[1]||'')=='inventario')RU.mv(x.id,'inv');else if(rr=RU.room(a[1]))RU.mv(x.id,rr)}}
-else if(k=='abrir'||k=='cerrar'){rr=RU.room(a[0]);let d=rr&&RU.dir(rr,a[1]);if(d){S.xo=S.xo||{};let e=G.rooms[rr].ex[d],o=k=='abrir'?1:0;S.xo[rr+d]=o;let b=OP[d]&&G.rooms[e.to]&&G.rooms[e.to].ex[OP[d]];if(b&&b.to==rr)S.xo[e.to+OP[d]]=o}}
-else if(k=='ir'){rr=RU.room(v);if(rr&&(RU.dp||0)<4){S.prev=S.room;S.room=rr;S.on='';look();enter();RU.on('enter')}}
-else if(k=='luz'){rr=RU.room(a[0]);if(rr&&/^(on|off|partial)$/.test(a[1]))S.light[rr]=a[1]}
-else if(k=='danar'){S.hp-=+v||0;if(S.hp<=0)die()}else if(k=='curar')S.hp=Math.min(S.mhp,S.hp+(+v||0));
-else if(k=='fijar'||k=='sumar'){let p=v.split('='),n=nz(p[0]),x=p.length>1?+p[1]:1;if(n)RU.V()[n]=k=='fijar'?x:(RU.V()[n]||0)+x}
-else if(k=='iniciar'){let p=v.split('='),n=nz(p[0]);if(n){S.tm=S.tm||{};S.tm[n]=Math.max(1,+p[1]||1)+(RU.it?0:1)}}
-else if(k=='cancelar'){if(S.tm)delete S.tm[nz(v)]}
-else if(k=='puntos'){if(G.scoreOn){let n=+a[0]||0,key=a[1];S.pk=S.pk||{};if(!(key&&S.pk[key])){if(key)S.pk[key]=1;S.pts=(S.pts||0)+n;if(n)out(`[Tu puntuación ${n>0?'sube':'baja'} en ${Math.abs(n)} punto${Math.abs(n)==1?'':'s'}.]`,'c')}}}
-else if(/^pnj/.test(k)){let n=RU.npc(a[0]);if(n){let s=NS(n.id),w=NR(n.id),y=a[1]?RU.item(a[1]):null;
-if(k=='pnj'){let q=nz(a[1]||''),rr=q=='fuera'||q=='nada'?'':RU.room(a[1]);if(q=='fuera'||q=='nada'||(rr&&G.rooms[rr])){if(w)S.rm[w].npcs=S.rm[w].npcs.filter(x=>x!=n.id);if(rr)S.rm[rr].npcs.push(n.id)}}
-else if(k=='pnjdar'&&y){RU.rm(y.id);s.inv.push(y.id)}
-else if(k=='pnjtomar'&&y&&w&&S.rm[w].items.includes(y.id)){RU.rm(y.id);s.inv.push(y.id)}
-else if(k=='pnjsoltar'&&w){let l=a[1]?(y&&s.inv.includes(y.id)?[y.id]:[]):s.inv.slice();s.inv=s.inv.filter(i=>!l.includes(i));l.forEach(i=>{S.rm[w].items.push(i);S.rev[i]=1;SI()[i]=''})}
-else if(k=='pnjentregar'&&y&&s.inv.includes(y.id)){s.inv=s.inv.filter(i=>i!=y.id);S.inv.push(y.id);S.rev[y.id]=1;SI()[y.id]=''}
-else if(k=='pnjruta')s.off=/^(off|no|0)$/.test(nz(a[1]||''))?1:0}}
-else if(k=='manual')openManual(v);
-else if(k=='fin'){out(v,'k');S.over=1}else if(k=='seguir')RU.go=1},
+chk: t => {
+  let lines = RU.L(t);
+  if (!lines.length) return true;
+  
+  // Cada línea debe tener todas sus condiciones unidas por '|' cumplidas
+  return lines.every(l => {
+    let subConds = l.split('|').map(c => c.trim()).filter(Boolean);
+    return subConds.every(c => RU.ok(RU.sub(c)));
+  });
+},
+do: l => {
+  let effs = l.split('|');
+  effs.forEach(singleEff => {
+    let eff = singleEff.trim();
+    let i = eff.indexOf(':');
+    if (i < 0) return;
+    let k = nz(eff.slice(0, i)), v = eff.slice(i + 1).trim(), a = v.split('>').map(s => s.trim()), x, rr;
+    
+    if (k == 'di') out(v);
+    else if (k == 'activar') RU.F()[nz(v)] = 1;
+    else if (k == 'desactivar') delete RU.F()[nz(v)];
+    else if (k == 'dar') { if (x = RU.item(v)) RU.mv(x.id, 'inv'); }
+    else if (k == 'quitar' || k == 'ocultar') { if (x = RU.item(v)) RU.rm(x.id); }
+    else if (k == 'mover') { x = RU.item(a[0]); if (x) { if (nz(a[1] || '') == 'inventario') RU.mv(x.id, 'inv'); else if (rr = RU.room(a[1])) RU.mv(x.id, rr); } }
+    else if (k == 'abrir' || k == 'cerrar') { rr = RU.room(a[0]); let d = rr && RU.dir(rr, a[1]); if (d) { S.xo = S.xo || {}; let e = G.rooms[rr].ex[d], o = k == 'abrir' ? 1 : 0; S.xo[rr + d] = o; let b = OP[d] && G.rooms[e.to] && G.rooms[e.to].ex[OP[d]]; if (b && b.to == rr) S.xo[e.to + OP[d]] = o; } }
+    else if (k == 'ir') { rr = RU.room(v); if (rr && (RU.dp || 0) < 4) { S.prev = S.room; S.room = rr; S.on = ''; look(); enter(); RU.on('enter'); } }
+    else if (k == 'luz') { rr = RU.room(a[0]); if (rr && /^(on|off|partial)$/.test(a[1])) S.light[rr] = a[1]; }
+    else if (k == 'danar') { S.hp -= +v || 0; if (S.hp <= 0) die(); }
+    else if (k == 'curar') S.hp = Math.min(S.mhp, S.hp + (+v || 0));
+    else if (k == 'fijar' || k == 'sumar') { let p = v.split('='), n = nz(p[0]), x = p.length > 1 ? +p[1] : 1; if (n) RU.V()[n] = k == 'fijar' ? x : (RU.V()[n] || 0) + x; }
+    else if (k == 'iniciar') { let p = v.split('='), n = nz(p[0]); if (n) { S.tm = S.tm || {}; S.tm[n] = Math.max(1, +p[1] || 1) + (RU.it ? 0 : 1); } }
+    else if (k == 'cancelar') { if (S.tm) delete S.tm[nz(v)]; }
+    else if (k == 'puntos') { if (G.scoreOn) { let n = +a[0] || 0, key = a[1]; S.pk = S.pk || {}; if (!(key && S.pk[key])) { if (key) S.pk[key] = 1; S.pts = (S.pts || 0) + n; if (n) out(`[Tu puntuación ${n > 0 ? 'sube' : 'baja'} en ${Math.abs(n)} punto${Math.abs(n) == 1 ? '' : 's'}.]`, 'c'); } } }
+    else if (/^pnj/.test(k)) { let n = RU.npc(a[0]); if (n) { let s = NS(n.id), w = NR(n.id), y = a[1] ? RU.item(a[1]) : null; if (k == 'pnj') { let q = nz(a[1] || ''), rr = q == 'fuera' || q == 'nada' ? '' : RU.room(a[1]); if (q == 'fuera' || q == 'nada' || (rr && G.rooms[rr])) { if (w) S.rm[w].npcs = S.rm[w].npcs.filter(x => x != n.id); if (rr) S.rm[rr].npcs.push(n.id); } } else if (k == 'pnjdar' && y) { RU.rm(y.id); s.inv.push(y.id); } else if (k == 'pnjtomar' && y && w && S.rm[w].items.includes(y.id)) { RU.rm(y.id); s.inv.push(y.id); } else if (k == 'pnjsoltar' && w) { let l = a[1] ? (y && s.inv.includes(y.id) ? [y.id] : []) : s.inv.slice(); s.inv = s.inv.filter(i => !l.includes(i)); l.forEach(i => { S.rm[w].items.push(i); S.rev[i] = 1; SI()[i] = ''; }); } else if (k == 'pnjentregar' && y && s.inv.includes(y.id)) { s.inv = s.inv.filter(i => i != y.id); S.inv.push(y.id); S.rev[y.id] = 1; SI()[y.id] = ''; } else if (k == 'pnjruta') s.off = /^(off|no|0)$/.test(nz(a[1] || '')) ? 1 : 0; } }
+    else if (k == 'manual') openManual(v);
+    else if (k == 'fin') { out(v, 'k'); S.over = 1; }
+    else if (k == 'seguir') RU.go = 1;
+  });
+},
 norm:s=>{let w=nz(s).replace(/[¿?¡!.,;]/g,' ').split(/\s+/).filter(x=>x&&!/^(el|la|los|las|un|una)$/.test(x));if(w[0]&&AL[w[0]])w[0]=AL[w[0]];return w.join(' ')},
 m:(p,n)=>p.includes('*')?new RegExp('^'+p.split('*').map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+'$').test(n):p==n,
 sub:l=>{let c=RU.ctx;return c?l.replace(/\$n1/g,c.n1||'').replace(/\$n2/g,c.n2||'').replace(/\$1/g,c.o1||'').replace(/\$2/g,c.o2||''):l},
@@ -850,6 +866,7 @@ function asv(){if(!S)return;if(!S.slot)S.slot=uidS();let a=raw(),i=a.findIndex(x
 function ses(){let l=slots(),h='';if(l.length){h='<b style="color:var(--a)">💾 Partidas de este proyecto</b><button data-sa=cont>▶ Continuar última partida</button>'+l.map(x=>{let cu=S&&S.slot==x.id;return`<div class=sl style="border:1px solid ${cu?'var(--a)':'#2a3040'};border-radius:8px;padding:6px;margin:6px 0"><b>${esc(x.name)}</b>${cu?' <small style="color:var(--a)">(en curso)</small>':''}<br><small style="color:var(--m)">📍 ${esc(G.rooms[x.S.room].name)}<br>❤ PS ${x.S.hp}/${x.S.mhp} · 🪙 ${x.S.gold} oro<br>🕒 ${esc(new Date(x.t).toLocaleString('es'))}</small><div><button data-sa=load data-id="${x.id}">▶ Cargar</button> <button data-sa=ren data-id="${x.id}">✏</button> <button data-sa=del data-id="${x.id}">🗑</button></div></div>`}).join('')+'<hr>'}$('#ses').innerHTML=h}
 function upd(){if(!S)return;const b=(l,v,m,c)=>`<div class=bar><i style="width:${Math.max(0,v/m*100)}%;background:${c}"></i><span>${l} ${v}/${m}</span></div>`;
 $('#bars').innerHTML=b('❤ PS',S.hp,S.mhp,'#c0453f')+b('⚡ Energía',S.en,S.men,'#4a8be0')+`<small style="color:var(--m)">📍 ${esc(R().name)} · 🪙 ${S.gold} oro · 🧍 ${S.pos}${S.on&&it(S.on)?' en '+esc(it(S.on).name):''}${G.turnos?' · ⏱ '+(S.turns||0):''}${G.scoreOn?' · ⭐ '+(S.pts||0)+(G.scoreMax?'/'+G.scoreMax:''):''}${S.fight?' · ⚔ COMBATE':''}</small>`;map()}
+
 let panX = 0, panY = 0, lastRoom = null;
 
 function map(){
@@ -958,6 +975,43 @@ function map(){
     x.fill();
   };
 
+    // Comprueba si un segmento atraviesa alguna sala distinta de origen/destino
+  const hitsRoom = (p, q, r, t) => ps.some(o => {
+    if(o.id == r.id || o.id == t.id) return false;
+    let [qx, qy] = P(o), m = z / 2 + 3;
+    return Math.max(p[0], q[0]) > qx - m && Math.min(p[0], q[0]) < qx + m &&
+           Math.max(p[1], q[1]) > qy - m && Math.min(p[1], q[1]) < qy + m;
+  });
+
+  // Devuelve la lista de puntos del camino (rectas + una sola curva en L)
+  const route = (r, t, d, a, b, c, e) => {
+    const h = z / 2;
+    const [x1, y1] = getAnchor(a, b, z, d);
+    const sx = Math.sign(c - x1), sy = Math.sign(e - y1);
+
+    // Vertical primero: baja/sube hasta la altura del destino y entonces gira
+    const V = () => Math.abs(c - x1) < 4
+      ? [[x1, y1], [x1, e - sy * h]]
+      : [[x1, y1], [x1, e], [c - sx * h, e]];
+
+    // Horizontal primero: avanza hasta la columna del destino y entonces gira
+    const H = () => Math.abs(e - y1) < 4
+      ? [[x1, y1], [c - sx * h, y1]]
+      : [[x1, y1], [c, y1], [c, e - sy * h]];
+
+    const vertFirst = (d == 'n' || d == 's' || d.length == 2);
+    const cands = vertFirst ? [V(), H()] : [H(), V()];
+
+    for(const pts of cands){
+      let ok = true;
+      for(let i = 0; i < pts.length - 1 && ok; i++){
+        if(hitsRoom(pts[i], pts[i + 1], r, t)) ok = false;
+      }
+      if(ok) return pts;
+    }
+    return cands[0]; // si todas chocan, usa la preferida
+  };
+
   // PASO A: DIBUJAR LÍNEAS LIMPIAS Y UNIFICADAS
   x.lineWidth = 1.5;
 
@@ -998,30 +1052,32 @@ function map(){
       x.strokeStyle = lineCol;
       x.setLineDash(vs ? [] : [3, 3]);
 
-      let oppDir = (typeof OP !== 'undefined' && OP[d]) ? OP[d] : (d=='n'?'s':d=='s'?'n':d=='e'?'o':d=='o'?'e':d=='ne'?'so':d=='no'?'se':d=='se'?'no':'ne');
-      let [x1, y1] = getAnchor(a, b, z, d);
-      let [x2, y2] = getAnchor(c, e, z, oppDir);
-
+            let x1, y1, x2, y2, arrAngle;
       x.beginPath();
-      x.moveTo(x1, y1);
 
-      let arrAngle = Math.atan2(y2 - y1, x2 - x1);
-
-      // Trazado acotado dentro del cuadrante entre las dos habitaciones
-      if(Math.abs(x1 - x2) < 4 || Math.abs(y1 - y2) < 4){
-        x.lineTo(x2, y2);
-      } else if(d == 'e' || d == 'o'){
-        let midX = (x1 + x2) / 2;
-        x.lineTo(midX, y1);
-        x.lineTo(midX, y2);
-        x.lineTo(x2, y2);
-        arrAngle = Math.atan2(0, x2 - midX);
+      if(DV[d]){
+        // Salidas de brújula: recta + una sola L, sin atravesar otras salas
+        let pts = route(r, t, d, a, b, c, e);
+        pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]));
+        [x1, y1] = pts[0];
+        [x2, y2] = pts[pts.length - 1];
+        let pv = pts[pts.length - 2];
+        arrAngle = Math.atan2(y2 - pv[1], x2 - pv[0]);
       } else {
+        // Subir/bajar/entrar/salir: se mantiene el comportamiento anterior
+        [x1, y1] = getAnchor(a, b, z, d);
+        [x2, y2] = getAnchor(c, e, z, OP && OP[d] ? OP[d] : d);
         let midY = (y1 + y2) / 2;
-        x.lineTo(x1, midY);
-        x.lineTo(x2, midY);
-        x.lineTo(x2, y2);
-        arrAngle = Math.atan2(y2 - midY, 0);
+        x.moveTo(x1, y1);
+        if(Math.abs(x1 - x2) < 4 || Math.abs(y1 - y2) < 4){
+          x.lineTo(x2, y2);
+          arrAngle = Math.atan2(y2 - y1, x2 - x1);
+        } else {
+          x.lineTo(x1, midY);
+          x.lineTo(x2, midY);
+          x.lineTo(x2, y2);
+          arrAngle = Math.atan2(y2 - midY, 0);
+        }
       }
       x.stroke();
       x.setLineDash([]);
@@ -1031,7 +1087,6 @@ function map(){
       if(!isTwoWay){
         drawArrow(x2, y2, arrAngle, lineCol);
       }
-
       // Símbolos de nivel o puerta cerrada
       let dist = Math.hypot(x2 - x1, y2 - y1);
       if((d == 'u' || d == 'd' || d == 'in' || d == 'out') && dist > 18){
@@ -1102,6 +1157,7 @@ function map(){
     }
   });
 }
+
 let MR = [];
 const tip = $('#tip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tip' }));
 
