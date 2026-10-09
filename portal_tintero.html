@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="shortcut icon" href="https://cdn.jsdelivr.net/gh/rodalvis-sys/Motor-de-Aventuras@345d154a4e2ec669dbf5b638966e812ad3a67bb6/Imagen/tintero-logo.png" type="image/png">
+  <title>Tintero - Motor de Aventuras de Ficción Interactiva</title>
+  
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e1015;
+      --p: #171a22;
+      --q: #1f2430;
+      --t: #d8dce6;
+      --m: #8a92a6;
+      --a: #e0a84a;
+      --g: #4ec27a;
+      --r: #e05a5a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--t);
+      font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--p);
+      border-bottom: 1px solid #2a3040;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--t);
+    }
+
+    .brand img {
+      height: 38px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+    }
+
+    .github-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--q);
+      color: var(--t);
+      border: 1px solid #333b4d;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .github-link:hover {
+      border-color: var(--a);
+      color: var(--a);
+    }
+
+    main {
+      flex: 1;
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    .hero-logo {
+      max-width: 280px;
+      width: 100%;
+      height: auto;
+      margin: 0 auto 16px;
+      display: block;
+    }
+
+    .hero p {
+      color: var(--m);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 8px auto 0;
+    }
+
+    .grid-hub {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--p);
+      border: 1px solid #2a3040;
+      border-radius: 10px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--a);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--a);
+    }
+
+    .card p {
+      margin: 0 0 20px;
+      color: var(--m);
+      font-size: 0.95rem;
+      flex: 1;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--q);
+      color: var(--t);
+      border: 1px solid #333b4d;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-align: center;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .card:hover .btn-action {
+      background: var(--a);
+      color: #0e1015;
+      border-color: var(--a);
+    }
+
+    .about-section {
+      background: var(--p);
+      border: 1px solid #2a3040;
+      border-radius: 10px;
+      padding: 28px;
+    }
+
+    .about-section h3 {
+      color: var(--a);
+      margin: 0 0 16px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .feature-item {
+      background: var(--q);
+      border: 1px solid #2a3040;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .feature-item b {
+      color: var(--t);
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+    }
+
+    .feature-item span {
+      color: var(--m);
+      font-size: 0.85rem;
+      line-height: 1.4;
+      display: block;
+    }
+
+    footer {
+      background: var(--p);
+      border-top: 1px solid #2a3040;
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--m);
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+
+    footer a {
+      color: var(--a);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="brand">
+      <img src="https://cdn.jsdelivr.net/gh/rodalvis-sys/Motor-de-Aventuras@345d154a4e2ec669dbf5b638966e812ad3a67bb6/Imagen/tintero-logo-nombre.png" alt="Tintero Logo">
+    </a>
+    <a href="https://github.com/rodalvis-sys/Motor-de-Aventuras" target="_blank" rel="noopener" class="github-link">
+      <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub Repo
+    </a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img src="https://cdn.jsdelivr.net/gh/rodalvis-sys/Motor-de-Aventuras@345d154a4e2ec669dbf5b638966e812ad3a67bb6/Imagen/tintero-logo-nombre.png" alt="Tintero - Motor de Aventuras" class="hero-logo">
+      <p>Entorno completo para crear, editar y jugar ficción interactiva directamente desde tu navegador.</p>
+    </section>
+
+    <div class="grid-hub">
+      <a href="motor_aventuras.html" class="card">
+        <div>
+          <div class="card-header">
+            <span class="card-icon">📝</span>
+            <h2>Editor de Historias</h2>
+          </div>
+          <p>Diseña mundos narrativos, crea habitaciones, objetos, personajes y reglas mediante una interfaz visual sin tocar código.</p>
+        </div>
+        <div class="btn-action">
+          Abrir Editor ➔
+        </div>
+      </a>
+
+      <a href="reproductor_aventuras.html" class="card">
+        <div>
+          <div class="card-header">
+            <span class="card-icon">🎮</span>
+            <h2>Reproductor de Aventuras</h2>
+          </div>
+          <p>Carga historias exportadas en JSON o GMA para jugar ficción interactiva con mapa interactivo y comandos de texto.</p>
+        </div>
+        <div class="btn-action">
+          Abrir Reproductor ➔
+        </div>
+      </a>
+    </div>
+
+    <section class="about-section">
+      <h3>📖 Sobre Tintero</h3>
+      <p style="color: var(--t); margin-top: 0;">
+        <b>Tintero</b> es un motor de ficción interactiva ligero, autónomo y diseñado para funcionar de manera completamente offline. Permite crear juegos conversacionales complejos utilizando un DSL de reglas visuales en lugar de programación tradicional.
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <b>⚙️ Sin necesidad de código</b>
+          <span>Gestión de eventos mediante reglas de condiciones y efectos simples.</span>
+        </div>
+
+        <div class="feature-item">
+          <b>🗺 MAPA interactivo</b>
+          <span>Dibujo dinámico e interactivo del mapa conforme el jugador explora.</span>
+        </div>
+
+        <div class="feature-item">
+          <b>🎒 Objetos y Contenedores</b>
+          <span>Soporte para cerraduras, combinación de objetos, notas y linternas.</span>
+        </div>
+
+        <div class="feature-item">
+          <b>🧑 Sistema de PNJs</b>
+          <span>Personajes no jugadores con diálogos, comercio, rutas y combates.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Tintero · Motor de Aventuras de Ficción Interactiva</p>
+    <p style="margin-top: 4px;">
+      Código abierto en <a href="https://github.com/rodalvis-sys/Motor-de-Aventuras" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+
+</body>
+</html>
