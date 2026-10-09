@@ -23,7 +23,6 @@ main{flex:1;overflow:auto;padding:12px}.v{display:none;max-width:900px;margin:au
 <nav id="menu"><div id="ses"></div><button id="ld">📂 Cargar aventura o partida (.ma / .gma / .json)</button><button id="ng">↺ Nueva partida</button><button id="xg">⬇ Exportar partida (guardar progreso)</button><input type="file" id="fi" accept=".ma,.gma,.json" hidden></nav>
 <main><section class="v on" id="gm"><div id="log"></div><div id="cmd"><input id="in" placeholder="Comando (ej: n,n,e · mirar · ayuda)" autocomplete="off"><button id="send">Enviar</button><button id="ng2">↺ Nueva partida</button></div><div id="bars"></div><canvas id="map"></canvas></section></main>
 <script>
-
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),fh=(i,f)=>i.fns.includes(f),nz=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const UI={
 m:(h,btns,inp)=>new Promise(res=>{let o=document.createElement('div');o.className='md';o.innerHTML='<div><p>'+h+'</p>'+(inp!==undefined?'<input type=text id=mdi value="'+esc(inp)+'">':'')+'<div class=mb></div></div>';
@@ -35,14 +34,13 @@ confirm:t=>UI.m(esc(t),[['Cancelar',false],['Aceptar',true,1]]),
 prompt:(t,d)=>UI.m(esc(t),[['Cancelar',null],['Aceptar',o=>o.querySelector('#mdi').value,1]],d||'')
 };
 const DN={n:'Norte',s:'Sur',e:'Este',o:'Oeste',ne:'Noreste',no:'Noroeste',se:'Sureste',so:'Suroeste',u:'Arriba',d:'Abajo','in':'Dentro',out:'Fuera'},OP={n:'s',s:'n',e:'o',o:'e',ne:'so',so:'ne',no:'se',se:'no',u:'d',d:'u','in':'out',out:'in'},POS=['Levantado','Sentado','Acostado','Agachado','Hincado','A gatas'];
-// Añade ['escribir', 'Escribir / Utensilio (bolígrafo, lápiz, tiza…)'] a la constante FN:
 const FN=[['none','Ninguna'],['mueble','Mueble (mirar debajo)'],['luz','Luz / Linterna'],['notas','Anotar (Libreta/Smartphone)'],['nota','Nota narrativa'],['camara','Cámara'],['llave','Llave'],['arma','Arma'],['armadura','Armadura'],['cura','Consumible'],['asiento','Asiento (sentarse)'],['cama','Cama (acostarse)'],['contenedor','Contenedor (cofre, caja…)'],['superficie','Superficie (poner objetos encima)'],['escribir','Escribir / Utensilio (bolígrafo, lápiz, tiza…)']];
 const IDF={id:'',name:'',desc:'',fn:'none',fijo:false,under:'',nid:1,txt:'',dev:'libreta',atk:0,tipo:'',def:0,heal:0,price:0,shop:false,start:false,comodo:false,master:false,cl:'none',code:'',on:'',into:'',alias:'',deco:false,portatil:false,dv:'',initOpen:false,noClose:false};
 NPF={id:'',name:'',desc:'',dlg:'',hos:'aliado',hp:8,atk:2,def:0,vel:2,gold:3,weak:'',alias:'',inv:'',muestra:false,acepta:'',ack:'',rech:'',gflag:'',da:'',ruta:'',cada:0,modo:'ciclo'},
 RMF={id:'',name:'Sala nueva',desc:'',vague:'',light:'on',x:0,y:0,gold:0,bulb:false,swPos:'',swOn:'Tanteas la pared hasta dar con el interruptor y lo pulsas: la bombilla se enciende.',swOff:'Pulsas el interruptor y la bombilla se apaga.'},
 CHF={name:'Viajero',ps:20,en:10,atk:3,def:1,vel:3,pos:'Levantado',arma:'',armadura:''},OPF={name:'Opción',desc:'',ps:0,en:0,atk:0,def:0,vel:0,arma:'',armadura:''};
-const mk=(D,o)=>Object.assign({},D,o);let P={},cur='',mm='edit',ss=new Set(),GX=0,GY=0,G,S=null,sr=null,si=null,sn=null,et='hab';
-const sv=()=>{try{localStorage.setItem('mat_play',JSON.stringify(G))}catch(e){}};
+const mk=(D,o)=>Object.assign({},D,o);let P={},cur='',mm='edit',ss=new Set(),GX=0,GY=0,G=null,S=null,sr=null,si=null,sn=null,et='hab';
+const sv=()=>{if(!G)return;try{localStorage.setItem('mat_play',JSON.stringify(G))}catch(e){}};
 const VBF={id:'',name:'verbo',syn:'',arity:1,prep:'',msg:'No ocurre nada.'};
 const RLF={id:'',name:'Regla nueva',on:'cmd',pat:'',when:'',then:'',els:'',once:false,verb:'',o1:'',o2:''};
 function genId(){let i;do i='prj_'+Math.random().toString(36).slice(2,9);while(Object.values(P).some(p=>p&&p.project_id==i));return i}
@@ -64,10 +62,16 @@ function start(pl){
   let cr=$('#cr');
   cr&&(cr.style.display='none');
   $('#log').innerHTML='';
+  if(!G||!G.rooms[G.start]) G=(G&&G.rooms)?G:null;
+  if(!G){
+    S=null;
+    add('Carga una aventura primero (☰ → Cargar aventura).','w');
+    return;
+  }
   if(!G.rooms[G.start]) G.start=Object.keys(G.rooms)[0];
   if(!G.start){
     S=null;
-    add('Aún no hay salas. Créalas en el Editor de Historias (☰).','w');
+    add('La historia no tiene salas definidas.','w');
     return;
   }
   if(G.useChar&&!pl&&(G.askName||G.cg.length)) return creator();
@@ -128,24 +132,19 @@ let x=R().ex[d];if(!x||!G.rooms[x.to])return out(L()=='off'?'Tanteas en la oscur
 if(!RU.xo(S.room,d))return out(x.msg||`La salida «${dn(d)}» está cerrada${x.lock?' con llave':''}.`,'w'),false;if(x.cond&&!RU.chk(x.cond))return out(x.msg||'No puedes pasar por ahí.','w'),false;S.prev=S.room;S.room=x.to;S.on='';look();enter();RU.on('enter');upd();return!S.fight}
 function unlock(q, w = ''){
   let r = R();
-  // Detecta la dirección limpia aunque contenga más texto
   let dirTarget = q.split(/\s+/)[0];
   let dq = dirOf(dirTarget), n = 0;
   let ks = inv().filter(i=>fh(i,'llave'));
-  
-  // Extrae el código numérico ya sea del parámetro 'w' o del propio texto 'q'
   let codeInput = w.trim() || (q.match(/\b(\d+)\b/)?.[1] || '');
 
   for (let d in r.ex){
     let x = r.ex[d];
     if(!G.rooms[x.to] || (dq && dq != d)) continue;
-    
     if(RU.xo(S.room, d)) continue;
 
     n = 1;
     S.xo = S.xo || {};
 
-    // Caso A: CÓDIGO
     if(x.code){
       if(!codeInput) return out(`La salida «${dn(d)}» exige un código numérico. Usa: abrir ${dn(d)} con <código>.`, 'w');
       if(codeInput == x.code){
@@ -159,7 +158,6 @@ function unlock(q, w = ''){
       }
     }
 
-    // Caso B: LLAVE
     if(x.lock){
       if(S.unl[S.room+d]){
         S.xo[S.room+d] = 1;
@@ -179,7 +177,6 @@ function unlock(q, w = ''){
       continue;
     }
 
-    // Caso C: Puerta simplemente entornada o cerrada
     S.xo[S.room+d] = 1;
     if(OP[d] && G.rooms[x.to].ex[OP[d]]) S.xo[x.to+OP[d]] = 1;
     out(`Abres el paso hacia el ${dn(d)}.`, 'ok');
@@ -192,28 +189,19 @@ const cs=x=>(S.cont=S.cont||{},S.cont[x.id]=S.cont[x.id]||{open:false,unl:false}
 function contTxt(x){let l=ALL().filter(i=>par(i)==x.id);return l.length?`Dentro de ${x.name} hay: ${l.map(i=>i.name).join(', ')}.`:`${x.name} está vacío.`}
 function canSee(x){
   if(!x) return false;
-  if(S.inv.includes(x.id)) return true; // Si está en el inventario, siempre se ve
-  
+  if(S.inv.includes(x.id)) return true;
   let pId = par(x);
-  if(!pId) return true; // Si está suelto en la sala (sin padre), se ve
-  
+  if(!pId) return true;
   let parent = it(pId);
   if(!parent) return false;
-  
-  // Si el padre es un contenedor, debe estar abierto
   if(fh(parent, 'contenedor') && !cs(parent).open) return false;
-  
-  // Si el padre está dentro de otro contenedor, comprueba recursivamente hacia arriba
   return canSee(parent);
 }
 
 function exam(q){
   if(L()!='on') return out('Está demasiado oscuro para examinar nada.','w');
-  
-  // Obtiene todos los objetos de la sala que son accesibles según el estado de sus contenedores
   let roomItems = RM().items.map(it).filter(i => i && canSee(i));
   let x = fnd(inv(), q) || fnd(roomItems, q);
-  
   if(x){
     let o = DS(x) + (fh(x,'nota') ? '\nTexto: ' + x.txt : '');
     let on = fh(x,'contenedor') ? [] : ALL().filter(i => par(i) == x.id);
@@ -227,7 +215,6 @@ function exam(q){
     }
     return out(o);
   }
-  
   let n = fnd(RM().npcs.map(i => G.npcs[i]), q);
   n ? out(n.desc + (n.muestra && NI(n.id).length ? '\nLleva: ' + NI(n.id).map(i => i.name).join(', ') + '.' : '')) : out('No ves eso.','w');
 }
@@ -247,22 +234,14 @@ function openCont(x,w){
     out('Introduces el código: ¡clic! Se abre.','ok');
   }
   else out(`Abres ${x.name}.`,'ok');
-  
   c.open=true;
-  // Revela todos los objetos contenidos dentro del contenedor recién abierto
   RM().items.map(it).filter(i=>i&&par(i)==x.id).forEach(i=>S.rev[i.id]=1);
   out(contTxt(x));
 }
 function abrirCmd(a){
   let m = a.match(/^(.+?)\s+con\s+(.+)$/), t = m ? m[1] : a, w = m ? m[2] : '';
   let d = dirOf(t);
-  
-  // 1. Si es una dirección (ej: "abrir oeste con 1234")
-  if(d){
-    return unlock(t, w);
-  }
-  
-  // 2. Si no es dirección, busca contenedores
+  if(d) return unlock(t, w);
   if(L() == 'on'){
     let roomItems = RM().items.map(it).filter(Boolean);
     let x = fnd(inv().concat(roomItems), t);
@@ -273,32 +252,18 @@ function abrirCmd(a){
 }
 function closeCont(x, w, echaLlave){
   let c = cs(x);
-  
-  // Si el objeto es una superficie o no es un contenedor cerrado por naturaleza
-  if(fh(x, 'superficie') || x.noClose){
-    return out(`${x.name} no se puede cerrar.`, 'w');
-  }
-
+  if(fh(x, 'superficie') || x.noClose) return out(`${x.name} no se puede cerrar.`, 'w');
   if(!c.open) return out(`${x.name} ya está cerrado.`);
-
-  // CÓDIGO: Se bloquea automáticamente al cerrar
   if(x.cl == 'code'){
-    c.open = false;
-    c.unl = false;
+    c.open = false; c.unl = false;
     return out(`Cierras ${x.name}. El pestillo de combinación salta y se bloquea automáticamente.`, 'ok');
   }
-
-  // LLAVE: Petición explícita de echar llave
   if(x.cl == 'key' && echaLlave){
     let k = inv().filter(i=>fh(i,'llave')).find(i=>(!w||nz(i.name).includes(nz(w)))&&(i.master||(i.opens||[]).includes('i:'+x.id)));
     if(!k) return out(`No tienes ninguna llave que encaje para echar el cerrojo a ${x.name}.`, 'w');
-    
-    c.open = false;
-    c.unl = false;
+    c.open = false; c.unl = false;
     return out(`Cierras ${x.name} y usas ${k.name} para echar el cerrojo con llave.`, 'ok');
   }
-
-  // Cierre normal
   c.open = false;
   out(`Cierras ${x.name}.`, 'ok');
 }
@@ -308,64 +273,38 @@ function cerrarCmd(a){
   let d = dirOf(t);
   let echaLlave = /llave/i.test(w) || !!w;
 
-  // 1. Salidas del mapa
   if(d){
     let r = R();
     let x = r.ex[d];
     if(x && G.rooms[x.to]){
-      if(!x.lock && !x.canClose && !x.code){
-        return out(`El paso hacia el ${dn(d)} no tiene una puerta o mecanismo para cerrarse.`, 'w');
-      }
-
+      if(!x.lock && !x.canClose && !x.code) return out(`El paso hacia el ${dn(d)} no tiene una puerta o mecanismo para cerrarse.`, 'w');
       S.xo = S.xo || {};
-
-      // Caso A: Puerta con CÓDIGO (se bloquea sola al cerrar)
       if(x.code){
-        S.xo[S.room + d] = 0;
-        delete S.unl[S.room + d];
-        if(OP[d] && G.rooms[x.to].ex[OP[d]]){
-          S.xo[x.to + OP[d]] = 0;
-          delete S.unl[x.to + OP[d]];
-        }
+        S.xo[S.room + d] = 0; delete S.unl[S.room + d];
+        if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; delete S.unl[x.to + OP[d]]; }
         return out(`Cierras la puerta hacia el ${dn(d)}. El pestillo de combinación se bloquea automáticamente.`, 'ok');
       }
-
-      // Caso B: Puerta con LLAVE
       if(x.lock){
         if(echaLlave){
           let ks = inv().filter(i => fh(i, 'llave'));
           let k = ks.find(i => (!w || nz(i.name).includes(nz(w))) && (i.master || (i.opens || []).includes(S.room + ':' + d)));
-          if(!k){
-            return out(`No tienes ninguna llave que encaje para echar el cerrojo a la salida «${dn(d)}».`, 'w');
-          }
-          S.xo[S.room + d] = 0;
-          delete S.unl[S.room + d]; // Echa la llave (exigirá llave al abrir)
-          if(OP[d] && G.rooms[x.to].ex[OP[d]]){
-            S.xo[x.to + OP[d]] = 0;
-            delete S.unl[x.to + OP[d]];
-          }
+          if(!k) return out(`No tienes ninguna llave que encaje para echar el cerrojo a la salida «${dn(d)}».`, 'w');
+          S.xo[S.room + d] = 0; delete S.unl[S.room + d];
+          if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; delete S.unl[x.to + OP[d]]; }
           return out(`Cierras el paso hacia el ${dn(d)} y usas ${k.name} para echar el cerrojo.`, 'ok');
         } else {
-          // Solo entorna la puerta (sin echar la llave)
           S.xo[S.room + d] = 0;
-          if(OP[d] && G.rooms[x.to].ex[OP[d]]){
-            S.xo[x.to + OP[d]] = 0;
-          }
+          if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; }
           return out(`Cierras la puerta hacia el ${dn(d)} (sin echar la llave).`, 'ok');
         }
       }
-
-      // Caso C: Puerta normal
       S.xo[S.room + d] = 0;
-      if(OP[d] && G.rooms[x.to].ex[OP[d]]){
-        S.xo[x.to + OP[d]] = 0;
-      }
+      if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; }
       return out(`Cierras el paso hacia el ${dn(d)}.`, 'ok');
     }
     return out(`No hay ninguna salida al ${dn(d)} que puedas cerrar.`, 'w');
   }
 
-  // 2. Objetos contenedores
   if(L() == 'on'){
     let roomItems = RM().items.map(it).filter(Boolean);
     let x = fnd(inv().concat(roomItems), t);
@@ -392,15 +331,12 @@ function drop(q){let x=fnd(inv(),q);if(!x)return out('No tienes eso.','w');MV(x.
 function invy(){let c={};S.inv.filter(i=>it(i)&&!hid(it(i))).forEach(i=>c[i]=(c[i]||0)+1);out('🎒 Inventario:\n'+(Object.keys(c).map(i=>`• ${it(i).name}${RL(it(i))}${c[i]>1?' x'+c[i]:''}${S.arma==i?' [arma]':''}${S.armadura==i?' [armadura]':''}`).join('\n')||'(vacío)')+'\n🪙 Oro: '+S.gold)}
 function leer(q){
   let nq = nz(q);
-  // Si pides leer la libreta, redirige a las anotaciones del jugador
   if (nq.includes('libreta') || nq.includes('mi libreta')) {
     return out('📒 Anotaciones:\n' + (S.mine.map((x, k) => `${k + 1}. ${x}`).join('\n') || '(vacía)'));
   }
-  
   if(!S.notes.length) return out('No tienes notas narrativas encontradas.');
   if(L()=='off') return out('Está demasiado oscuro para leer.','w');
   if(/todas?/.test(q)) return S.notes.forEach(n=>out(`Nota ${n.id}: ${n.txt}`));
-  
   let dg=q.match(/\d+/),n;
   if(dg) n=S.notes.find(n=>n.id==dg[0]);
   else { n=S.notes[S.np%S.notes.length]; S.np++; }
@@ -409,14 +345,10 @@ function leer(q){
 function anot(t){
   let ds=inv().filter(i=>fh(i,'notas'));
   if(!ds.length) return out('Necesitas una libreta o un smartphone para anotar.','w');
-  
-  // Acepta si no es libreta (ej. smartphone) O si en el inventario hay algún objeto con función 'escribir' o que se llame 'lapiz' (compatibilidad previa)
   let tieneUtensilio = inv().some(i => fh(i, 'escribir') || /lapiz/.test(nz(i.name)));
   let d = ds.find(i => i.dev != 'libreta') || (tieneUtensilio ? ds[0] : 0);
-  
   if(!d) return out('La libreta exige tener algo con qué escribir en tu inventario (un lápiz, bolígrafo, etc.).','w');
   if(!t) return out('Uso: anotar <texto>');
-  
   S.mine.push(t);
   out(`Anotas en ${d.name}: "${t}"`,'ok');
 }
@@ -450,7 +382,6 @@ MV=(id,d,src)=>{let ks=KD(id,src);R1(id,src);ks.forEach(k=>R1(k,src));[id].conca
 DS=x=>{if(x.dv)for(let l of RU.L(x.dv)){let i=l.indexOf('|');if(i>0&&RU.chk(l.slice(0,i).split('&').join('\n')))return l.slice(i+1).trim()}return x.desc},
 RL=i=>{let p=par(i),y=p&&it(p);return y?' ('+(fh(y,'contenedor')?'en ':'sobre ')+y.name+')':''};
 /* ---------- REGLAS, BANDERAS Y CONDICIONES ---------- */
-/* ---------- MANUAL (ventana con selector) ---------- */
 function openManual(q){let ms=(G.manual||[]).filter(c=>c&&(c.title||c.text));if(!ms.length)return out('Esta aventura no tiene manual.','w');
 let n=nz(q||''),i=Math.max(0,n?ms.findIndex(c=>nz(c.title).includes(n)):0),old=document.getElementById('mn');old&&old.remove();
 let o=document.createElement('div');o.id='mn';
@@ -458,7 +389,7 @@ o.innerHTML=`<div role=dialog><div class=mh><b>📖 ${esc(G.manualTitle||'Manual
 const sh=k=>{let t=o.querySelector('#mt');t.textContent=ms[k].text||'';t.scrollTop=0},kd=e=>{if(e.key=='Escape'){e.stopPropagation();cl()}},cl=()=>{document.removeEventListener('keydown',kd,true);o.remove()};
 o.querySelector('#ms').value=i;sh(i);o.querySelector('#ms').onchange=e=>sh(+e.target.value);o.querySelector('#mx').onclick=cl;o.onmousedown=e=>{if(e.target==o)cl()};
 document.addEventListener('keydown',kd,true);document.body.append(o);out('Abres el manual.','c')}
-/* ---------- PNJ AVANZADOS (módulo 6) ---------- */
+/* ---------- PNJ AVANZADOS ---------- */
 const NS=id=>{S.nst=S.nst||{};let s=S.nst[id];if(!s){let n=G.npcs[id]||{};s=S.nst[id]={inv:String(n.inv||'').split(',').map(q=>RU.item(q.trim())).filter(Boolean).map(x=>x.id),c:0,off:0}}return s},
 NX=id=>Object.keys(G.npcs).forEach(k=>{let s=NS(k);s.inv=s.inv.filter(x=>x!=id)}),
 NI=id=>NS(id).inv.map(it).filter(Boolean),
@@ -497,7 +428,6 @@ xo:(rid,d)=>{
   if(!x) return false;
   let o=(S.xo||{})[rid+d];
   if(o!==undefined) return !!o;
-  // Si tiene candado o código y no ha sido desbloqueada, está cerrada
   let isLocked = (x.lock || !!x.code) && !S.unl[rid+d];
   return !isLocked;
 },
@@ -551,11 +481,9 @@ try1: r => {
   if (hasSi) {
     let executedAny = false;
     RU.go = 0;
-
     whenLines.forEach((wLine, idx) => {
       let isSi = /^si\s*:/i.test(wLine);
       let cond = isSi ? wLine.replace(/^si\s*:\s*/i, '') : wLine;
-
       if (RU.chk(cond)) {
         let eff = thenLines[idx];
         if (eff) {
@@ -575,7 +503,6 @@ try1: r => {
     return executedAny ? (RU.go ? 2 : 1) : 0;
   }
 
-  // Comportamiento estándar de siempre
   let ok = RU.chk(r.when), L = ok ? r.then : r.els;
   if (!ok && !RU.L(r.els).length) return 0;
   RU.go = 0;
@@ -583,11 +510,11 @@ try1: r => {
   if (ok && r.once) S.fired[r.id] = 1;
   return RU.go ? 2 : 1;
 },
-cmd:raw=>{let n=RU.norm(raw);S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!='cmd'||!r.pat||(r.once&&S.fired[r.id]))continue;if(!r.pat.split('|').some(p=>RU.m(RU.norm(p),n)))continue;let q=RU.try1(r);if(q)return q==1}return false},
-tick:()=>{S.turns=(S.turns||0)+1;let ex=[];S.tm=S.tm||{};for(let k in S.tm)if(--S.tm[k]<=0){delete S.tm[k];ex.push(k)}RU.it=1;try{ex.forEach(k=>RU.on('timer',k));Object.keys(G.npcs).forEach(npcStep);RU.on('turno')}finally{RU.it=0}},
-on:(tr,nm)=>{if((RU.dp||0)>3)return;RU.dp=(RU.dp||0)+1;S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!=tr||(nm!==undefined&&nz(r.pat||'')!=nz(nm))||(r.once&&S.fired[r.id]))continue;if(RU.chk(r.when)){RU.L(r.then).forEach(RU.do);if(r.once)S.fired[r.id]=1}}RU.dp--}
+cmd:raw=>{if(!G)return false;let n=RU.norm(raw);S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!='cmd'||!r.pat||(r.once&&S.fired[r.id]))continue;if(!r.pat.split('|').some(p=>RU.m(RU.norm(p),n)))continue;let q=RU.try1(r);if(q)return q==1}return false},
+tick:()=>{S.turns=(S.turns||0)+1;let ex=[];S.tm=S.tm||{};for(let k in S.tm)if(--S.tm[k]<=0){delete S.tm[k];ex.push(k)}RU.it=1;try{ex.forEach(k=>RU.on('timer',k));if(G)Object.keys(G.npcs).forEach(npcStep);RU.on('turno')}finally{RU.it=0}},
+on:(tr,nm)=>{if(!G||(RU.dp||0)>3)return;RU.dp=(RU.dp||0)+1;S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!=tr||(nm!==undefined&&nz(r.pat||'')!=nz(nm))||(r.once&&S.fired[r.id]))continue;if(RU.chk(r.when)){RU.L(r.then).forEach(RU.do);if(r.once)S.fired[r.id]=1}}RU.dp--}
 };
-/* ---------- VERBOS (paquete general + verbos propios) ---------- */
+/* ---------- VERBOS ---------- */
 const PACK=[['empujar','mover,presionar,desplazar',1,'','Empujas {1}, pero no ocurre nada.'],['jalar','halar,tirar de',1,'','Jalas {1}, pero no ocurre nada.'],['lanzar','arrojar,tirar',1,'','No consigues nada lanzando {1}.'],['girar','rotar,voltear',1,'','Giras {1}, pero no ocurre nada.'],
 ['poner','meter,colocar,introducir,insertar',2,'en|sobre|dentro de|encima de','No puedes poner {1} ahí.'],['dar','entregar,ofrecer',2,'a','No ocurre nada al dar {1}.'],['atar','amarrar',2,'a|en|con','No puedes atar {1} a eso.'],['desatar','desamarrar',1,'','No hay nada que desatar.'],
 ['cavar','excavar',3,'con','No consigues cavar ahí.'],['cortar','rajar',3,'con','No consigues cortar {1}.'],['quemar','incendiar',3,'con','No consigues quemar {1}.'],['romper','destrozar,quebrar',3,'con','No consigues romper {1}.'],['llenar','',3,'con','No puedes llenar {1}.'],['vaciar','',1,'','No hay nada que vaciar.'],
@@ -595,7 +522,7 @@ const PACK=[['empujar','mover,presionar,desplazar',1,'','Empujas {1}, pero no oc
 ['escuchar','oir',4,'','No oyes nada especial.'],['tocar','palpar',1,'','No sientes nada especial.'],['saltar','brincar',4,'','Saltas, pero no logras nada.'],['trepar','escalar',1,'','No puedes trepar por {1}.'],['cruzar','atravesar',1,'','No puedes cruzar {1}.'],['pedir','solicitar,rogar',2,'a','No consigues nada pidiéndolo.']].map(a=>({id:a[0],name:a[0],syn:a[1],arity:a[2],prep:a[3],msg:a[4]}));
 const BI='mirar coger foto soltar inventario usar encender apagar pulsar salidas consumir abrir cerrar anotar libreta notas leer fotos hablar tienda comprar equipar estado atacar habilidad defender huir sentarse acostarse tumbarse levantarse levantar agacharse hincarse arrodillarse gatas ir ve camina creditos ?'.split(' ');
 const VB={
-all:()=>(G.verbs||[]).concat(PACK),
+all:()=>((G&&G.verbs)||[]).concat(PACK),
 tk:s=>nz(s).replace(/[¿?¡!.,;]/g,' ').split(/\s+/).filter(x=>x&&!/^(el|la|los|las|un|una)$/.test(x)).map(x=>x=='al'?'a':x=='del'?'de':x),
 art:n=>{let w=n.split(' ')[0];return(/as$/i.test(w)?'las ':/s$/i.test(w)?'los ':/a$/i.test(w)?'la ':'el ')+n},
 verb:t=>{let b=null,bl=0;for(let v of VB.all())for(let p of (v.name+','+(v.syn||'')).split(',')){let w=VB.tk(p);if(w.length>bl&&w.every((x,i)=>t[i]===x)){b=v;bl=w.length}}return b&&{v:b,n:bl}},
@@ -604,7 +531,7 @@ ent:ws=>{if(!ws.length)return null;let q=ws.join(' '),on=L()=='on',x=fnd(on?inv(
 put:(a,b)=>{let x=it(a.id),y=it(b.id);if(!x||!y)return false;let c=fh(y,'contenedor'),sf=fh(y,'superficie');if(!c&&!sf)return false;if(!S.inv.includes(x.id))return out(`No tienes ${VB.art(x.name)}.`,'w'),true;
 for(let p=y;p;p=par(p)?it(par(p)):null)if(p.id==x.id)return out('No puedes hacer eso.','w'),true;if(c&&!cs(y).open)return out(`${VB.art(y.name)} está cerrado.`.replace(/^./,m=>m.toUpperCase()),'w'),true;
 MV(x.id,S.inv.includes(y.id)?'inv':S.room,'inv');SI()[x.id]=y.id;S.rev[x.id]=1;if(S.arma==x.id)S.arma='';if(S.armadura==x.id)S.armadura='';return out(`Pones ${VB.art(x.name)} ${c?'en':'sobre'} ${VB.art(y.name)}.`,'ok'),true},
-run:raw=>{let t=VB.tk(raw),m=VB.verb(t);if(!m)return false;let v=m.v,ar=+v.arity,rest=t.slice(m.n),w1=rest,w2=[],cap=s=>s[0].toUpperCase()+s.slice(1);
+run:raw=>{if(!G)return false;let t=VB.tk(raw),m=VB.verb(t);if(!m)return false;let v=m.v,ar=+v.arity,rest=t.slice(m.n),w1=rest,w2=[],cap=s=>s[0].toUpperCase()+s.slice(1);
 if(ar==2||ar==3)[w1,w2]=VB.split(rest,v);if(ar==0)w1=[];
 let e1=VB.ent(w1),e2=VB.ent(w2);if(v.id=='pedir'&&!e1&&e2&&G.npcs[e2.id]&&w1.length){let pe=fnd(NI(e2.id),w1.join(' '));if(pe)e1={id:pe.id,name:pe.name}}let soft=BI.includes(AL[t[0]]||t[0])||!!dirOf(t[0]),
 c={o1:e1?e1.id:'',o2:e2?e2.id:'',n1:e1?e1.name:w1.join(' '),n2:e2?e2.name:w2.join(' ')};S.fired=S.fired||{};
@@ -639,7 +566,7 @@ const HELP='Comandos disponibles:\n' +
 '• Sistema: estado · puntos · turnos · creditos · ? (ayuda)';
 const NT=['?','creditos','estado','inventario','notas','libreta','fotos','salidas','puntos','turnos'];
 const SCT=()=>{let m=G.scoreMax?' de '+G.scoreMax:'',rk=String(G.ranks||'').split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&!isNaN(parseInt(p[0]))).map(p=>[parseInt(p[0]),p[1].trim()]).sort((a,b)=>b[0]-a[0]).find(p=>(S.pts||0)>=p[0]);return`Tu puntuación es ${S.pts||0}${m} en ${S.turns||0} turnos.`+(rk?' Rango: '+rk[1]+'.':'')};
-const AL={credito:'creditos',about:'creditos',puntuacion:'puntos',score:'puntos',turno:'turnos',m:'mirar',ver:'mirar',examinar:'mirar',l:'mirar',tomar:'coger',agarrar:'coger',recoger:'coger',dejar:'soltar',i:'inventario',inv:'inventario',u:'usar',prender:'encender',h:'hablar',luchar:'atacar',pelear:'atacar',a:'atacar',galeria:'fotos',ayuda:'?',escribir:'anotar',desbloquear:'abrir',sacar:'coger',accionar:'pulsar',sentarme:'sentarse',sentar:'sentarse',sientate:'sentarse',acostarme:'acostarse',acuestate:'acostarse',tumbarme:'tumbarse',salida:'salidas',beber:'consumir',comer:'consumir', eliminar: 'borrar', limpiar: 'borrar',},
+const AL={credito:'creditos',about:'creditos',puntuacion:'puntos',score:'puntos',turno:'turnos',m:'mirar',ver:'mirar',examinar:'mirar',l:'mirar',tomar:'coger',agarrar:'coger',recoger:'coger',dejar:'soltar',i:'inventario',inv:'inventario',u:'usar',prender:'encender',h:'hablar',luchar:'atacar',pelear:'atacar',a:'atacar',galeria:'fotos',ayuda:'?',escribir:'anotar',desbloquear:'abrir',sacar:'coger',accionar:'pulsar',sentarme:'sentarse',sentar:'sentarse',sientate:'sentarse',acostarme:'acostarse',acuestate:'acostarse',tumbarme:'tumbarse',salida:'salidas',beber:'consumir',comer:'consumir', eliminar: 'borrar', limpiar: 'borrar'},
 PM={levantarse:'Levantado',levantar:'Levantado',sentarse:'Sentado',acostarse:'Acostado',tumbarse:'Acostado',agacharse:'Agachado',hincarse:'Hincado',arrodillarse:'Hincado',gatas:'A gatas'};
 function run(t,raw){raw=raw||t;t=nz(t).replace(/^(ponerse|ponte)\s+/,'').replace(/^a gatas$/,'gatas');if(!t)return;S.nt=1;let[v,...r]=t.split(/\s+/),a=r.join(' ').replace(/^((el|la|los|las|un|una|de|del|con|a|al|en)\s+)+/,'');v=AL[v]||v;S.nt=NT.includes(v)?1:0;if(!S.fight&&(RU.cmd(raw)||VB.run(raw)))return;
 if(S.fight){let F={atacar:()=>pAtk(0),habilidad:()=>pAtk(1),defender:()=>{S.fight.df=1;S.en=Math.min(S.men,S.en+2);out('Te cubres: recibirás menos daño y recuperas energía.');enemy()},huir:flee,usar:()=>use(a),estado:status,'?':()=>out(HELP)}[v];F?F():(S.nt=1,out('En combate: atacar, habilidad, defender, huir, usar <objeto>.','w'));return}
@@ -696,16 +623,20 @@ borrar:()=>{
 hablar:()=>talk(a),tienda:shop,comprar:()=>buy(a),equipar:()=>equip(a),estado:status,'?':()=>out(HELP),puntos:()=>out(G.scoreOn?SCT():'En esta aventura no se lleva puntuación.'),turnos:()=>out('Llevas '+(S.turns||0)+' turnos.'),creditos:()=>out(G.credits?'📜 Créditos\n'+G.credits:'Esta aventura no tiene créditos definidos.'),
 atacar:()=>{if(!G.combat)return out('En esta historia no hay combates.');if(L()!='on')return out('No ves a quién atacar.','w');let n=(a?fnd(RM().npcs.map(i=>G.npcs[i]),a):0)||RM().npcs.map(i=>G.npcs[i]).find(n=>n.hos=='enemigo');if(!n||n.hos!='enemigo')return out('No hay un enemigo al que atacar.','w');startFight(n);pAtk(0)}}[v];
 C?C():(S.nt=1,out('No entiendo "'+raw+'". Escribe "ayuda".','w'))}
-function exec(s){s=s.trim();if(!s)return;if(!S)return add('Aún no hay partida activa: pulsa ↺ Nueva partida.','w');out('› '+s,'c');if(S.over)return out('La aventura ha terminado. Pulsa ↺ Nueva partida.','w');let p=s.split(/\s*,\s*/);if(p.length>1&&p.every(dirOf)){for(let q of p){let r=run(q);if(!S.nt)RU.tick();if(r===false||S.fight)break}}else{run(s,s);if(!S.nt)RU.tick()}RU.on('after');upd();asv()}
-/* ---------- PARTIDAS GUARDADAS (varias por proyecto) ---------- */
-const sk=()=>'mat_SL_'+G.project_id,uidS=()=>'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
-raw=()=>{try{return JSON.parse(localStorage.getItem(sk()))||[]}catch(e){return[]}},put=a=>{try{localStorage.setItem(sk(),JSON.stringify(a))}catch(e){}};
-function slots(){let a=raw();try{let ok='mat_S_'+G.project_id,o=JSON.parse(localStorage.getItem(ok));if(o&&o.S){o.S.slot=o.S.slot||uidS();a.push({id:o.S.slot,name:'Partida anterior',t:o.t,S:o.S});put(a);localStorage.removeItem(ok)}}catch(e){}return a.filter(x=>x&&x.S&&G.rooms[x.S.room]).sort((p,q)=>q.t-p.t)}
+function exec(s){s=s.trim();if(!s)return;if(!S)return add('Aún no hay partida activa: pulsa ↺ Nueva partida o carga un proyecto desde ☰.','w');out('› '+s,'c');if(S.over)return out('La aventura ha terminado. Pulsa ↺ Nueva partida.','w');let p=s.split(/\s*,\s*/);if(p.length>1&&p.every(dirOf)){for(let q of p){let r=run(q);if(!S.nt)RU.tick();if(r===false||S.fight)break}}else{run(s,s);if(!S.nt)RU.tick()}RU.on('after');upd();asv()}
+
+/* ---------- PARTIDAS GUARDADAS ---------- */
+const sk=()=>G?'mat_SL_'+G.project_id:'',uidS=()=>'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+raw=()=>{if(!G)return[];try{return JSON.parse(localStorage.getItem(sk()))||[]}catch(e){return[]}},put=a=>{if(!G)return;try{localStorage.setItem(sk(),JSON.stringify(a))}catch(e){}};
+function slots(){if(!G)return[];let a=raw();try{let ok='mat_S_'+G.project_id,o=JSON.parse(localStorage.getItem(ok));if(o&&o.S){o.S.slot=o.S.slot||uidS();a.push({id:o.S.slot,name:'Partida anterior',t:o.t,S:o.S});put(a);localStorage.removeItem(ok)}}catch(e){}return a.filter(x=>x&&x.S&&G.rooms[x.S.room]).sort((p,q)=>q.t-p.t)}
 const hasSave=()=>slots().length>0;
 function asv(){if(!S)return;if(!S.slot)S.slot=uidS();let a=raw(),i=a.findIndex(x=>x.id==S.slot),e={id:S.slot,name:i<0?S.name+' #'+(a.length+1):a[i].name,t:Date.now(),S};i<0?a.push(e):a[i]=e;put(a)}
 function ses(){let l=slots(),h='';if(l.length){h='<b style="color:var(--a)">💾 Partidas de este proyecto</b><button data-sa=cont>▶ Continuar última partida</button>'+l.map(x=>{let cu=S&&S.slot==x.id;return`<div class=sl style="border:1px solid ${cu?'var(--a)':'#2a3040'};border-radius:8px;padding:6px;margin:6px 0"><b>${esc(x.name)}</b>${cu?' <small style="color:var(--a)">(en curso)</small>':''}<br><small style="color:var(--m)">📍 ${esc(G.rooms[x.S.room].name)}<br>❤ PS ${x.S.hp}/${x.S.mhp} · 🪙 ${x.S.gold} oro<br>🕒 ${esc(new Date(x.t).toLocaleString('es'))}</small><div><button data-sa=load data-id="${x.id}">▶ Cargar</button> <button data-sa=ren data-id="${x.id}">✏</button> <button data-sa=del data-id="${x.id}">🗑</button></div></div>`}).join('')+'<hr>'}$('#ses').innerHTML=h}
 function upd(){if(!S)return;const b=(l,v,m,c)=>`<div class=bar><i style="width:${Math.max(0,v/m*100)}%;background:${c}"></i><span>${l} ${v}/${m}</span></div>`;
 $('#bars').innerHTML=b('❤ PS',S.hp,S.mhp,'#c0453f')+b('⚡ Energía',S.en,S.men,'#4a8be0')+`<small style="color:var(--m)">📍 ${esc(R().name)} · 🪙 ${S.gold} oro · 🧍 ${S.pos}${S.on&&it(S.on)?' en '+esc(it(S.on).name):''}${G.turnos?' · ⏱ '+(S.turns||0):''}${G.scoreOn?' · ⭐ '+(S.pts||0)+(G.scoreMax?'/'+G.scoreMax:''):''}${S.fight?' · ⚔ COMBATE':''}</small>`;map()}
+
+let panX = 0, panY = 0, lastRoom = null;
+
 function map(){
   let cv = $('#map');
   MR = [];
@@ -716,10 +647,8 @@ function map(){
   let c0 = G.rooms[S.room];
   if(!c0) return;
 
-  // Recentrado automático cuando el jugador cambia de habitación
   if(lastRoom !== S.room){
-    panX = 0;
-    panY = 0;
+    panX = 0; panY = 0;
     lastRoom = S.room;
   }
 
@@ -728,7 +657,6 @@ function map(){
   const GL = { u:'▲', d:'▼', 'in':'⇥', out:'⇤' };
   let pos = {}, bad = [];
 
-  // 1. Matriz de coordenadas
   if(lib){
     Object.keys(S.vis).map(i => G.rooms[i]).filter(Boolean).forEach(r => {
       pos[r.id] = [r.x, r.y];
@@ -751,10 +679,7 @@ function map(){
           if(pos[t.id] + '' != k) bad.push([r, d]);
           continue;
         }
-        if(occ[k]){
-          bad.push([r, d]);
-          continue;
-        }
+        if(occ[k]){ bad.push([r, d]); continue; }
         pos[t.id] = p;
         occ[k] = t.id;
         q.push(t.id);
@@ -765,7 +690,6 @@ function map(){
   let ps = Object.keys(pos).map(i => G.rooms[i]).filter(Boolean);
   if(!ps.length) return;
 
-  // 2. Escala y centrado (con soporte de arrastre manual)
   let minSc = 52, boxSize = 28;
   let X = ps.map(r => pos[r.id][0]), Y = ps.map(r => pos[r.id][1]);
   let x0 = Math.min(...X), y0 = Math.min(...Y);
@@ -812,7 +736,31 @@ function map(){
     x.fill();
   };
 
-  // PASO A: DIBUJAR LÍNEAS LIMPIAS Y UNIFICADAS
+  const hitsRoom = (p, q, r, t) => ps.some(o => {
+    if(o.id == r.id || o.id == t.id) return false;
+    let [qx, qy] = P(o), m = z / 2 + 3;
+    return Math.max(p[0], q[0]) > qx - m && Math.min(p[0], q[0]) < qx + m &&
+           Math.max(p[1], q[1]) > qy - m && Math.min(p[1], q[1]) < qy + m;
+  });
+
+  const route = (r, t, d, a, b, c, e) => {
+    const h = z / 2;
+    const [x1, y1] = getAnchor(a, b, z, d);
+    const sx = Math.sign(c - x1), sy = Math.sign(e - y1);
+    const V = () => Math.abs(c - x1) < 4 ? [[x1, y1], [x1, e - sy * h]] : [[x1, y1], [x1, e], [c - sx * h, e]];
+    const H = () => Math.abs(e - y1) < 4 ? [[x1, y1], [c - sx * h, y1]] : [[x1, y1], [c, y1], [c, e - sy * h]];
+    const vertFirst = (d == 'n' || d == 's' || d.length == 2);
+    const cands = vertFirst ? [V(), H()] : [H(), V()];
+    for(const pts of cands){
+      let ok = true;
+      for(let i = 0; i < pts.length - 1 && ok; i++){
+        if(hitsRoom(pts[i], pts[i + 1], r, t)) ok = false;
+      }
+      if(ok) return pts;
+    }
+    return cands[0];
+  };
+
   x.lineWidth = 1.5;
 
   ps.forEach(r => {
@@ -823,7 +771,6 @@ function map(){
       let t = G.rooms[r.ex[d].to];
       if(!t || !pos[t.id]) continue;
 
-      // Clave estricta de deduplicación (evita duplicar líneas de ida y vuelta)
       let k = [r.id, t.id].sort().join('-');
       if(dn.has(k)) continue;
       dn.add(k);
@@ -831,7 +778,6 @@ function map(){
       let [c, e] = P(t);
       if(Math.max(a, c) < -60 || Math.min(a, c) > W + 60 || Math.max(b, e) < -60 || Math.min(b, e) > H + 60) continue;
 
-      // Autoconexión
       if(t.id == r.id){
         let [sx, sy] = getAnchor(a, b, z, d);
         let lp = 12;
@@ -852,41 +798,38 @@ function map(){
       x.strokeStyle = lineCol;
       x.setLineDash(vs ? [] : [3, 3]);
 
-      let oppDir = (typeof OP !== 'undefined' && OP[d]) ? OP[d] : (d=='n'?'s':d=='s'?'n':d=='e'?'o':d=='o'?'e':d=='ne'?'so':d=='no'?'se':d=='se'?'no':'ne');
-      let [x1, y1] = getAnchor(a, b, z, d);
-      let [x2, y2] = getAnchor(c, e, z, oppDir);
-
+      let x1, y1, x2, y2, arrAngle;
       x.beginPath();
-      x.moveTo(x1, y1);
 
-      let arrAngle = Math.atan2(y2 - y1, x2 - x1);
-
-      // Trazado acotado dentro del cuadrante entre las dos habitaciones
-      if(Math.abs(x1 - x2) < 4 || Math.abs(y1 - y2) < 4){
-        x.lineTo(x2, y2);
-      } else if(d == 'e' || d == 'o'){
-        let midX = (x1 + x2) / 2;
-        x.lineTo(midX, y1);
-        x.lineTo(midX, y2);
-        x.lineTo(x2, y2);
-        arrAngle = Math.atan2(0, x2 - midX);
+      if(DV[d]){
+        let pts = route(r, t, d, a, b, c, e);
+        pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]));
+        [x1, y1] = pts[0];
+        [x2, y2] = pts[pts.length - 1];
+        let pv = pts[pts.length - 2];
+        arrAngle = Math.atan2(y2 - pv[1], x2 - pv[0]);
       } else {
+        [x1, y1] = getAnchor(a, b, z, d);
+        [x2, y2] = getAnchor(c, e, z, OP && OP[d] ? OP[d] : d);
         let midY = (y1 + y2) / 2;
-        x.lineTo(x1, midY);
-        x.lineTo(x2, midY);
-        x.lineTo(x2, y2);
-        arrAngle = Math.atan2(y2 - midY, 0);
+        x.moveTo(x1, y1);
+        if(Math.abs(x1 - x2) < 4 || Math.abs(y1 - y2) < 4){
+          x.lineTo(x2, y2);
+          arrAngle = Math.atan2(y2 - y1, x2 - x1);
+        } else {
+          x.lineTo(x1, midY);
+          x.lineTo(x2, midY);
+          x.lineTo(x2, y2);
+          arrAngle = Math.atan2(y2 - midY, 0);
+        }
       }
       x.stroke();
       x.setLineDash([]);
 
-      // Flecha de sentido único
       let isTwoWay = Object.values(t.ex).some(y => y.to == r.id);
       if(!isTwoWay){
         drawArrow(x2, y2, arrAngle, lineCol);
       }
-
-      // Símbolos de nivel o puerta cerrada
       let dist = Math.hypot(x2 - x1, y2 - y1);
       if((d == 'u' || d == 'd' || d == 'in' || d == 'out') && dist > 18){
         let mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
@@ -903,7 +846,6 @@ function map(){
     }
   });
 
-  // PASO B: DIBUJAR CASILLAS ENCIMA (OCULTAN CUALQUIER TRAZO SUBYACENTE)
   ps.forEach(r => {
     let [a, b] = P(r);
     if(a < -40 || a > W + 40 || b < -40 || b > H + 40) return;
@@ -956,6 +898,7 @@ function map(){
     }
   });
 }
+
 let MR = [];
 const tip = $('#tip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tip' }));
 
@@ -1008,12 +951,65 @@ window.addEventListener('mouseup', () => {
 cvMap.onmouseleave = () => {
   if (tip) tip.style.display = 'none';
 };
+
+// Vinculación de envío de comandos (Enviar / Enter)
+const send=()=>{exec($('#in').value);$('#in').value=''};
+$('#send').onclick=send;
+$('#in').onkeydown=e=>{if(e.key=='Enter')send()};
+window.onresize=map;
+
+const dl=(o,n)=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));a.download=n;a.click()};
+
 function begin(){$('#menu').classList.remove('o');if(!G)return add('Carga una aventura primero (☰ → Cargar aventura).','w');start()}
-$('#ng').onclick=$('#ng2').onclick=begin;$('#xg').onclick=()=>S?dl({tipo:'partida',project_id:G.project_id,G,S},'partida-aventura.gma'):UI.alert('Inicia una partida primero.');$('#ld').onclick=()=>$('#fi').click();
-$('#fi').onchange=e=>{let f=e.target.files[0];e.target.value='';if(!f)return;let fr=new FileReader();fr.onload=()=>{try{let j=JSON.parse(fr.result);if(!j.G||(j.tipo!='proyecto'&&j.tipo!='partida'))throw 0;let id=j.project_id||j.G.project_id,cr=$('#cr');$('#menu').classList.remove('o');
-if(j.tipo=='partida'){if(G&&id&&id!=G.project_id)return UI.alert('Esta partida pertenece a otro juego y no es compatible');if(!G)G=fix(j.G);if(!j.S||!G.rooms[j.S.room])throw 0;sv();cr&&(cr.style.display='none');$('#ttl').textContent=G.title;S=j.S;S.slot=uidS();$('#log').innerHTML='';S.log.forEach(l=>add(l[0],l[1]));upd();asv()}
-else{j.G.project_id=j.G.project_id||j.project_id;G=fix(j.G);sv();$('#ttl').textContent=G.title;start()}}catch(x){UI.alert('Archivo no válido: usa un archivo .ma, .gma o .json exportado desde el editor.')}};fr.readAsText(f)};
-try{G=fix(JSON.parse(localStorage.getItem('mat_play')))}catch(e){G=null}
+$('#ng').onclick=$('#ng2').onclick=begin;
+$('#xg').onclick=()=>S?dl({tipo:'partida',project_id:G.project_id,G,S},'partida-aventura.gma'):UI.alert('Inicia una partida primero.');
+$('#ld').onclick=()=>$('#fi').click();
+
+$('#fi').onchange=e=>{
+  let f=e.target.files[0];
+  e.target.value='';
+  if(!f)return;
+  let fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      let j=JSON.parse(fr.result);
+      let cr=$('#cr');
+      $('#menu').classList.remove('o');
+      if(j.tipo=='partida'){
+        let id=j.project_id||(j.G&&j.G.project_id);
+        if(G&&id&&id!=G.project_id)return UI.alert('Esta partida pertenece a otro juego y no es compatible');
+        if(!G&&j.G)G=fix(j.G);
+        if(!G||!j.S||!G.rooms[j.S.room])throw 0;
+        sv();
+        cr&&(cr.style.display='none');
+        $('#ttl').textContent=G.title;
+        S=j.S;
+        S.slot=uidS();
+        $('#log').innerHTML='';
+        S.log.forEach(l=>add(l[0],l[1]));
+        upd();
+        asv();
+      }else{
+        let projData = j.G || (j.rooms ? j : null);
+        if(!projData) throw 0;
+        projData.project_id = projData.project_id || j.project_id;
+        G=fix(projData);
+        sv();
+        $('#ttl').textContent=G.title;
+        start();
+      }
+    }catch(x){
+      UI.alert('Archivo no válido: usa un archivo .ma, .gma o .json exportado desde el editor.');
+    }
+  };
+  fr.readAsText(f);
+};
+
+try{
+  let saved = localStorage.getItem('mat_play');
+  if(saved) G=fix(JSON.parse(saved));
+}catch(e){G=null}
+
 const fixClones=()=>{
   if(!S||!S.inv) return;
   S.clones = S.clones || {};
@@ -1026,6 +1022,7 @@ const fixClones=()=>{
     }
   });
 };
+
 const load=x=>{
   S=JSON.parse(JSON.stringify(x.S));
   fixClones();
@@ -1033,10 +1030,39 @@ const load=x=>{
   S.log.forEach(l=>add(l[0],l[1]));
   upd();
 };
-$('#ses').onclick=e=>{let b=e.target.closest('[data-sa]');if(!b)return;let a=b.dataset.sa,id=b.dataset.id,l=slots();
-if(a=='cont'){if(l[0])load(l[0])}else if(a=='load'){let x=l.find(x=>x.id==id);x?load(x):UI.alert('No se pudo restaurar la partida.')}
-else if(a=='ren'){let r=raw(),x=r.find(x=>x.id==id),n;if(x)UI.prompt('Nombre de la partida:',x.name).then(n=>{if(n&&n.trim()){x.name=n.trim().slice(0,40);put(r);ses()}})}
-else if(a=='del')UI.confirm('¿Borrar esta partida guardada? La configuración del proyecto no se verá afectada.').then(ok=>{if(!ok)return;put(raw().filter(x=>x.id!=id));
-if(S&&S.slot==id){S=null;$('#log').innerHTML='';$('#bars').innerHTML='';let c=$('#map');c.getContext('2d').clearRect(0,0,c.width,c.height);add('Partida borrada. Carga otra desde ☰ o pulsa ↺ Nueva partida.','w');$('#menu').classList.remove('o')}ses()})};
-if(G){$('#ttl').textContent=G.title;if(hasSave())add('Este proyecto tiene partidas guardadas. Abre ☰ para continuar o cargar una, o pulsa ↺ Nueva partida.','k');else start()}else add('Bienvenido. Abre el menú ☰ → "Cargar aventura" y elige un .json exportado desde el editor (proyecto o partida guardada).','k');
+
+$('#ses').onclick=e=>{
+  let b=e.target.closest('[data-sa]');
+  if(!b)return;
+  let a=b.dataset.sa,id=b.dataset.id,l=slots();
+  if(a=='cont'){if(l[0])load(l[0])}
+  else if(a=='load'){let x=l.find(x=>x.id==id);x?load(x):UI.alert('No se pudo restaurar la partida.')}
+  else if(a=='ren'){let r=raw(),x=r.find(x=>x.id==id);if(x)UI.prompt('Nombre de la partida:',x.name).then(n=>{if(n&&n.trim()){x.name=n.trim().slice(0,40);put(r);ses()}})}
+  else if(a=='del')UI.confirm('¿Borrar esta partida guardada? La configuración del proyecto no se verá afectada.').then(ok=>{
+    if(!ok)return;
+    put(raw().filter(x=>x.id!=id));
+    if(S&&S.slot==id){
+      S=null;
+      $('#log').innerHTML='';
+      $('#bars').innerHTML='';
+      let c=$('#map');
+      c.getContext('2d').clearRect(0,0,c.width,c.height);
+      add('Partida borrada. Carga otra desde ☰ o pulsa ↺ Nueva partida.','w');
+      $('#menu').classList.remove('o');
+    }
+    ses();
+  });
+};
+
+if(G){
+  $('#ttl').textContent=G.title;
+  if(hasSave()) add('Este proyecto tiene partidas guardadas. Abre ☰ para continuar o cargar una, o pulsa ↺ Nueva partida.','k');
+  else start();
+} else {
+  add('Bienvenido. Abre el menú ☰ → "Cargar aventura" y elige un .json exportado desde el editor (proyecto o partida guardada).','k');
+}
+
+// Activar el botón del menú ☰ y cierre al hacer clic fuera
+$('#bm').onclick = () => { ses(); $('#menu').classList.toggle('o'); };
+$('main').onclick = () =>$('#menu').classList.remove('o');
 </script></body></html>
