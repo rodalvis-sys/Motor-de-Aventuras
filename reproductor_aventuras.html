@@ -50,7 +50,7 @@ const LM={ne:'ne',noreste:'ne',no:'no',noroeste:'no',se:'se',sureste:'se',so:'so
 for(let k in g.rooms){let r=g.rooms[k];for(let d in r.ex){let x=r.ex[d];if(typeof x.lock=='string'){if(x.lock&&g.items[x.lock]&&!g.items[x.lock].opens.includes(k+':'+d))g.items[x.lock].opens.push(k+':'+d);x.lock=!!x.lock}}}g.char=mk(CHF,g.char);g.askName=g.askName!==false;g.cg=(g.cg||[]).map(c=>({label:c.label||'Grupo',opts:(c.opts||[]).map(o=>mk(OPF,o))}));g.title=g.title||'Aventura';g.intro=g.intro||'';g.rules=(g.rules||[]).map(r=>mk(RLF,r));g.verbs=(g.verbs||[]).map(v=>mk(VBF,v));g.flags0=g.flags0||'';g.turnos=!!g.turnos;g.scoreOn=!!g.scoreOn;g.scoreMax=+g.scoreMax||0;g.ranks=g.ranks||'';g.project_id=g.project_id||genId();return g}
 /* ---------- JUEGO ---------- */
 const R=()=>G.rooms[S.room],RM=()=>S.rm[S.room],L=()=>S.light[S.room]||R().light,it=id=>(S&&S.clones&&S.clones[id])||G.items[id],hid=i=>{let m=S.ins,p=m&&i.id in m?m[i.id]:(i.under||i.on||i.into);return!!p&&!S.rev[i.id]},par=i=>{let m=S.ins;return m&&i.id in m?m[i.id]:(i.into||i.on||'')},ALL=()=>S.inv.concat(RM().items).map(it).filter(Boolean),
-inv=()=>S.inv.map(it).filter(i=>i&&!hid(i)),vis=()=>RM().items.map(it).filter(i=>i&&!par(i)&&!hid(i)),nms=x=>[x.name].concat(String(x.alias||'').split(',')).map(nz).filter(Boolean),
+inv=()=>S.inv.map(it).filter(i=>i&&!hid(i)),acc=()=>RM().items.map(it).filter(i=>{if(!i||!canSee(i))return false;if(!hid(i))return true;let p=it(par(i)),mv=S.ins&&i.id in S.ins;return!!p&&fh(p,'contenedor')&&(mv||!i.under)}),vis=()=>RM().items.map(it).filter(i=>i&&!par(i)&&!hid(i)),nms=x=>[x.name].concat(String(x.alias||'').split(',')).map(nz).filter(Boolean),
 fnd=(a,q)=>{q=nz(q);return a.find(x=>nms(x).includes(q))||a.find(x=>nms(x).some(n=>n.includes(q)||(q.length>2&&q.includes(n))))},has=f=>inv().find(i=>fh(i,f)),d6=()=>1+Math.floor(Math.random()*6),
 dirOf=q=>({n:'n',norte:'n',s:'s',sur:'s',e:'e',este:'e',o:'o',oeste:'o',arriba:'u',subir:'u',ar:'u',abajo:'d',bajar:'d',ab:'d',ne:'ne',noreste:'ne',no:'no',noroeste:'no',se:'se',sureste:'se',so:'so',suroeste:'so',dentro:'in',adentro:'in',entrar:'in',fuera:'out',afuera:'out',salir:'out'})[nz(q||'')];
 function add(t,c){let d=document.createElement('div');d.className=c||'';d.textContent=t;$('#log').append(d);$('#log').scrollTop=1e9}
@@ -316,11 +316,11 @@ function cerrarCmd(a){
 function under(q){if(S.pos!='A gatas')return out('Para mirar debajo necesitas estar a gatas (escribe: gatas).','w');if(L()=='off')return out('No ves nada en la oscuridad.','w');let f=fnd(vis(),q);if(!f)return out('No ves ese mueble.','w');let h=RM().items.filter(i=>it(i).under==f.id&&!S.rev[i]);h.forEach(i=>S.rev[i]=1);out(h.length?`Debajo de ${f.name} encuentras: ${h.map(i=>it(i).name).join(', ')}.`:`No hay nada debajo de ${f.name}.`,h.length?'ok':'')}
 function take(q){if(L()!='on')return out('No distingues nada para coger en esta penumbra.','w');if(nz(q)=='oro'){let m=RM();if(!m.gold)return out('No hay oro aquí.');S.gold+=m.gold;out(`Recoges ${m.gold} de oro.`,'ok');m.gold=0;return upd()}
 let m=q.match(/^(.+?)\s+(?:de|del|en)\s+.+$/),F=a=>fnd(a,q)||(m&&fnd(a,m[1])),x0=F(inv().filter(i=>par(i)));if(x0){SI()[x0.id]='';return out('Sacas '+x0.name+'.','ok')}
-let x=F(vis());if(!x)return out('No ves eso aquí.','w');if(x.fijo||fh(x,'mueble')||(fh(x,'contenedor')&&!x.portatil))return out('No puedes llevártelo.','w');
+let x=F(acc());if(!x)return out('No ves eso aquí.','w');if(x.fijo||fh(x,'mueble')||(fh(x,'contenedor')&&!x.portatil))return out('No puedes llevártelo.','w');
 if(fh(x,'nota')){R1(x.id,S.room);S.notes.push({id:x.nid,txt:x.txt});S.notes.sort((a,b)=>a.id-b.id);out(`Guardas "${x.name}" en tus notas (n.º ${x.nid}). Usa "notas" o "leer".`,'ok')}else{MV(x.id,'inv',S.room);SI()[x.id]='';out('Coges: '+x.name+'.','ok')}}
 function grab(x){let src=S.inv.includes(x.id)&&par(x)?'inv':S.room;if(fh(x,'nota')){R1(x.id,src);S.notes.push({id:x.nid,txt:x.txt});S.notes.sort((a,b)=>a.id-b.id);return'nota'}if(src!='inv')MV(x.id,'inv',src);SI()[x.id]='';return'inv'}
 function takeAll(q){if(L()!='on')return out('No distingues nada para coger en esta penumbra.','w');let l;
-if(q){let x=fnd(inv().concat(vis()),q);if(!x)return out('No ves eso aquí.','w');let all=ALL(),c=fh(x,'contenedor')&&cs(x);l=all.filter(i=>par(i)==x.id&&(!c||c.open));
+if(q){let x=fnd(inv().concat(acc()),q);if(!x)return out('No ves eso aquí.','w');let all=ALL(),c=fh(x,'contenedor')&&cs(x);l=all.filter(i=>par(i)==x.id&&(!c||c.open));
 if(!l.length)return out(c&&!c.open&&all.some(i=>par(i)==x.id)?`${x.name} está cerrado.`:`No hay nada que coger de ${x.name}.`,'w')}
 else l=vis().filter(i=>!par(i));
 l=l.filter(i=>!(i.fijo||fh(i,'mueble')||(fh(i,'contenedor')&&!i.portatil)));let got=[],notes=[],o=[];l.forEach(i=>{S.rev[i.id]=1;(grab(i)=='nota'?notes:got).push(i.name)});
@@ -414,6 +414,7 @@ npc:q=>{q=String(q||'').trim();let n=nz(q),a=Object.values(G.npcs);return G.npcs
 F:()=>(S.flags=S.flags||{}),V:()=>(S.vars=S.vars||{}),L:t=>String(t||'').split('\n').map(x=>x.trim()).filter(Boolean),
 item:q=>{
   q=String(q||'').trim();let n=nz(q),a=Object.values(G.items);
+  if(S&&S.clones){let cl=Object.values(S.clones);let c=S.clones[q]||(n&&cl.find(i=>LOC(i.id)&&nms(i).includes(n)));if(c)return c}
   let itm=G.items[q]||a.find(i=>nms(i).includes(n))||a.find(i=>n&&nms(i).some(m=>m.includes(n)));
   if(itm) return itm;
   let npcs=Object.values(G.npcs);
