@@ -440,6 +440,7 @@ else if(k=='aqui'){
   r = !!x && (inv().concat(vis()).some(i=>i.id==x.id) || RM().npcs.includes(x.id));
 }
 else if(k=='sala')r=RU.room(v)==S.room;
+else if(k=='zona' || k=='hab') r = nz(R().name) == nz(v);
 else if(k=='abierto'){x=RU.item(v);r=!!x&&!!cs(x).open}
 else if(k=='en'){a=v.split('>');x=RU.item(a[0]);let rr=RU.room(a[1]);r=!!x&&!!rr&&S.rm[rr].items.includes(x.id)}
 else if(k=='pnj'){a=v.split('>').map(s=>s.trim());x=RU.npc(a[0]);r=!!x&&(a.length>1&&a[1]?NR(x.id)==RU.room(a[1]):!!NR(x.id))}
