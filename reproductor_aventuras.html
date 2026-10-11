@@ -412,13 +412,18 @@ function npcDrop(n){let m=RM(),dl=NS(n.id).inv.splice(0);dl.forEach(i=>{m.items.
 const RU={
 npc:q=>{q=String(q||'').trim();let n=nz(q),a=Object.values(G.npcs);return G.npcs[q]||a.find(i=>nms(i).includes(n))||a.find(i=>n&&nms(i).some(m=>m.includes(n)))},
 F:()=>(S.flags=S.flags||{}),V:()=>(S.vars=S.vars||{}),L:t=>String(t||'').split('\n').map(x=>x.trim()).filter(Boolean),
-item:q=>{
-  q=String(q||'').trim();let n=nz(q),a=Object.values(G.items);
-  if(S&&S.clones){let cl=Object.values(S.clones);let c=S.clones[q]||(n&&cl.find(i=>LOC(i.id)&&nms(i).includes(n)));if(c)return c}
-  let itm=G.items[q]||a.find(i=>nms(i).includes(n))||a.find(i=>n&&nms(i).some(m=>m.includes(n)));
-  if(itm) return itm;
-  let npcs=Object.values(G.npcs);
-  return G.npcs[q]||npcs.find(i=>nms(i).includes(n))||npcs.find(i=>n&&nms(i).some(m=>m.includes(n)));
+item: q => {
+  q = String(q || '').trim();
+  let n = nz(q), a = Object.values(G.items);
+  if (S && S.clones) {
+    let cl = Object.values(S.clones);
+    let c = S.clones[q] || (n && cl.find(i => LOC(i.id) && nms(i).includes(n)));
+    if (c) return c;
+  }
+  let itm = G.items[q] || a.find(i => nms(i).includes(n)) || a.find(i => n && nms(i).some(m => m.includes(n)));
+  if (itm) return itm;
+  let npcs = Object.values(G.npcs);
+  return G.npcs[q] || npcs.find(i => nms(i).includes(n)) || npcs.find(i => n && nms(i).some(m => m.includes(n)));
 },
 room:q=>{q=String(q||'').trim();let n=nz(q);if(n=='aqui')return S.room;let a=Object.values(G.rooms);return G.rooms[q]?q:(a.find(r=>nz(r.name)==n)||a.find(r=>n&&nz(r.name).includes(n))||{}).id},
 dir:(rr,t)=>{let q=nz(t||''),d=dirOf(q),e=G.rooms[rr].ex;return d?(e[d]?d:''):Object.keys(e).find(k=>k[0]=='c'&&nz(e[k].label||'')==q)||''},
@@ -441,9 +446,10 @@ else if(k=='aqui'){
 }
 else if(k=='sala')r=RU.room(v)==S.room;
 else if(k=='zona' || k=='hab') r = nz(R().name) == nz(v);
+else if(k=='es'){a=v.split('>').map(s=>s.trim());let p=RU.item(a[0]),q=RU.item(a[1]);r=!!p&&!!q&&p.id==q.id}
 else if(k=='abierto'){x=RU.item(v);r=!!x&&!!cs(x).open}
 else if(k=='en'){a=v.split('>');x=RU.item(a[0]);let rr=RU.room(a[1]);r=!!x&&!!rr&&S.rm[rr].items.includes(x.id)}
-else if(k=='pnj'){a=v.split('>').map(s=>s.trim());x=RU.npc(a[0]);r=!!x&&(a.length>1&&a[1]?NR(x.id)==RU.room(a[1]):!!NR(x.id))}
+else if(k=='pnj'){a=v.split('>').map(s=>s.trim());if(a[0]=='*'){let rr=a[1]?RU.room(a[1]):'';r=rr?!!S.rm[rr]&&S.rm[rr].npcs.length>0:Object.values(S.rm).some(z=>z.npcs.length>0)}else{x=RU.npc(a[0]);r=!!x&&(a.length>1&&a[1]?!!S.rm[RU.room(a[1])]&&S.rm[RU.room(a[1])].npcs.includes(x.id):!!NR(x.id))}}
 else if(k=='pnjtiene'){a=v.split('>').map(s=>s.trim());x=RU.npc(a[0]);let y=a[1]?RU.item(a[1]):null;r=!!x&&(a[1]?!!y&&NS(x.id).inv.includes(y.id):NS(x.id).inv.length>0)}
 else if(['var','timer','turnos','puntos'].includes(k)){let m=v.match(/^(.*?)\s*(>=|<=|==|=|>|<)\s*(-?\d+)\s*$/),nm=nz(m?m[1]:v),val=k=='turnos'?(S.turns||0):k=='puntos'?(S.pts||0):k=='var'?(RU.V()[nm]||0):(S.tm&&nm in S.tm?S.tm[nm]:null);
 if(!m)r=k=='timer'?val!==null:!!val;else if(val===null)r=false;else{let n=+m[3],o=m[2];r=o=='>='?val>=n:o=='<='?val<=n:o=='>'?val>n:o=='<'?val<n:val==n}}
@@ -451,7 +457,10 @@ else return true;
 return r!=ng},
 chk:t=>RU.L(t).every(l=>RU.ok(RU.sub(l))),
 do:l=>{let i=l.indexOf(':');if(i<0)return;let k=nz(l.slice(0,i)),v=l.slice(i+1).trim(),a=v.split('>').map(s=>s.trim()),x,rr;
-if(k=='di')out(v);else if(k=='activar')RU.F()[nz(v)]=1;else if(k=='desactivar')delete RU.F()[nz(v)];
+if(k=='di')out(v);
+else if(k=='activar')RU.F()[nz(v)]=1;
+else if(k=='desactivar')delete RU.F()[nz(v)];
+else if (k == 'mirar') { if (!nz(v) || nz(v) == 'sala') look(); else { x = RU.item(v); exam(x ? x.name : v); } }
 else if(k=='dar'){if(x=RU.item(v))RU.mv(x.id,'inv')}
 else if(k=='quitar'||k=='ocultar'){if(x=RU.item(v))RU.rm(x.id)}
 else if(k=='mover'){x=RU.item(a[0]);if(x){if(nz(a[1]||'')=='inventario')RU.mv(x.id,'inv');else if(rr=RU.room(a[1]))RU.mv(x.id,rr)}}
@@ -512,7 +521,41 @@ try1: r => {
   if (ok && r.once) S.fired[r.id] = 1;
   return RU.go ? 2 : 1;
 },
-cmd:raw=>{if(!G)return false;let n=RU.norm(raw);S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!='cmd'||!r.pat||(r.once&&S.fired[r.id]))continue;if(!r.pat.split('|').some(p=>RU.m(RU.norm(p),n)))continue;let q=RU.try1(r);if(q)return q==1}return false},
+cmd: raw => {
+  if (!G) return false;
+  let n = RU.norm(raw);
+  S.fired = S.fired || {};
+  for (let r of G.rules || []) {
+    if (r.on != 'cmd' || !r.pat || (r.once && S.fired[r.id])) continue;
+    let patterns = r.pat.split('|');
+    for (let p of patterns) {
+      if (RU.m(RU.norm(p), n)) {
+        let matchText = '';
+        if (p.includes('*')) {
+          let regexStr = '^' + RU.norm(p).split('*').map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('(.*)') + '$';
+          let m = n.match(new RegExp(regexStr));
+          if (m && m[1]) matchText = m[1].trim();
+        }
+        let ent = matchText ? (RU.npc(matchText) || RU.item(matchText)) : null;
+        let c = {
+          o1: ent ? ent.id : matchText,
+          o2: '',
+          n1: ent ? ent.name : matchText,
+          n2: ''
+        };
+        RU.ctx = c;
+        let q;
+        try {
+          q = RU.try1(r);
+        } finally {
+          RU.ctx = null;
+        }
+        if (q) return q == 1;
+      }
+    }
+  }
+  return false;
+},
 tick:()=>{S.turns=(S.turns||0)+1;let ex=[];S.tm=S.tm||{};for(let k in S.tm)if(--S.tm[k]<=0){delete S.tm[k];ex.push(k)}RU.it=1;try{ex.forEach(k=>RU.on('timer',k));if(G)Object.keys(G.npcs).forEach(npcStep);RU.on('turno')}finally{RU.it=0}},
 on:(tr,nm)=>{if(!G||(RU.dp||0)>3)return;RU.dp=(RU.dp||0)+1;S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!=tr||(nm!==undefined&&nz(r.pat||'')!=nz(nm))||(r.once&&S.fired[r.id]))continue;if(RU.chk(r.when)){RU.L(r.then).forEach(RU.do);if(r.once)S.fired[r.id]=1}}RU.dp--}
 };
