@@ -132,19 +132,24 @@ let x=R().ex[d];if(!x||!G.rooms[x.to])return out(L()=='off'?'Tanteas en la oscur
 if(!RU.xo(S.room,d))return out(x.msg||`La salida «${dn(d)}» está cerrada${x.lock?' con llave':''}.`,'w'),false;if(x.cond&&!RU.chk(x.cond))return out(x.msg||'No puedes pasar por ahí.','w'),false;S.prev=S.room;S.room=x.to;S.on='';look();enter();RU.on('enter');upd();return!S.fight}
 function unlock(q, w = ''){
   let r = R();
+  // Detecta la dirección limpia aunque contenga más texto
   let dirTarget = q.split(/\s+/)[0];
   let dq = dirOf(dirTarget), n = 0;
   let ks = inv().filter(i=>fh(i,'llave'));
+  
+  // Extrae el código numérico ya sea del parámetro 'w' o del propio texto 'q'
   let codeInput = w.trim() || (q.match(/\b(\d+)\b/)?.[1] || '');
 
   for (let d in r.ex){
     let x = r.ex[d];
     if(!G.rooms[x.to] || (dq && dq != d)) continue;
+    
     if(RU.xo(S.room, d)) continue;
 
     n = 1;
     S.xo = S.xo || {};
 
+    // Caso A: CÓDIGO
     if(x.code){
       if(!codeInput) return out(`La salida «${dn(d)}» exige un código numérico. Usa: abrir ${dn(d)} con <código>.`, 'w');
       if(codeInput == x.code){
@@ -158,6 +163,7 @@ function unlock(q, w = ''){
       }
     }
 
+    // Caso B: LLAVE
     if(x.lock){
       if(S.unl[S.room+d]){
         S.xo[S.room+d] = 1;
@@ -177,6 +183,7 @@ function unlock(q, w = ''){
       continue;
     }
 
+    // Caso C: Puerta simplemente entornada o cerrada
     S.xo[S.room+d] = 1;
     if(OP[d] && G.rooms[x.to].ex[OP[d]]) S.xo[x.to+OP[d]] = 1;
     out(`Abres el paso hacia el ${dn(d)}.`, 'ok');
@@ -185,23 +192,32 @@ function unlock(q, w = ''){
   upd();
 }
 function lite(x){let o=R().light,c=L();if(c!='on'){S.light[S.room]='on';out(S.inv.includes(x.id)?`Enciendes ${x.name}. La sala se ilumina.`:`Tanteando a tientas encuentras ${x.name} y ${/a$/i.test(x.name.trim())?'la':'lo'} enciendes. La sala se ilumina.`,'ok')}else if(o!='on'){S.light[S.room]=o;out(`Apagas ${x.name}.`)}else out('La sala ya está bien iluminada.');look()}
-const cs=x=>(S.cont=S.cont||{},S.cont[x.id]=S.cont[x.id]||{open:false,unl:false});
+const cs=x=>(S.cont=S.cont||{},S.cont[x.id]=S.cont[x.id]||{open:!!x.initOpen,unl:!!x.initOpen});
 function contTxt(x){let l=ALL().filter(i=>par(i)==x.id);return l.length?`Dentro de ${x.name} hay: ${l.map(i=>i.name).join(', ')}.`:`${x.name} está vacío.`}
 function canSee(x){
   if(!x) return false;
-  if(S.inv.includes(x.id)) return true;
+  if(S.inv.includes(x.id)) return true; // Si está en el inventario, siempre se ve
+  
   let pId = par(x);
-  if(!pId) return true;
+  if(!pId) return true; // Si está suelto en la sala (sin padre), se ve
+  
   let parent = it(pId);
   if(!parent) return false;
+  
+  // Si el padre es un contenedor, debe estar abierto
   if(fh(parent, 'contenedor') && !cs(parent).open) return false;
+  
+  // Si el padre está dentro de otro contenedor, comprueba recursivamente hacia arriba
   return canSee(parent);
 }
 
 function exam(q){
   if(L()!='on') return out('Está demasiado oscuro para examinar nada.','w');
+  
+  // Obtiene todos los objetos de la sala que son accesibles según el estado de sus contenedores
   let roomItems = RM().items.map(it).filter(i => i && canSee(i));
   let x = fnd(inv(), q) || fnd(roomItems, q);
+  
   if(x){
     let o = DS(x) + (fh(x,'nota') ? '\nTexto: ' + x.txt : '');
     let on = fh(x,'contenedor') ? [] : ALL().filter(i => par(i) == x.id);
@@ -215,6 +231,7 @@ function exam(q){
     }
     return out(o);
   }
+  
   let n = fnd(RM().npcs.map(i => G.npcs[i]), q);
   n ? out(n.desc + (n.muestra && NI(n.id).length ? '\nLleva: ' + NI(n.id).map(i => i.name).join(', ') + '.' : '')) : out('No ves eso.','w');
 }
@@ -234,14 +251,23 @@ function openCont(x,w){
     out('Introduces el código: ¡clic! Se abre.','ok');
   }
   else out(`Abres ${x.name}.`,'ok');
+  
   c.open=true;
+  // Revela todos los objetos contenidos dentro del contenedor recién abierto
   RM().items.map(it).filter(i=>i&&par(i)==x.id).forEach(i=>S.rev[i.id]=1);
   out(contTxt(x));
 }
+
 function abrirCmd(a){
   let m = a.match(/^(.+?)\s+con\s+(.+)$/), t = m ? m[1] : a, w = m ? m[2] : '';
   let d = dirOf(t);
-  if(d) return unlock(t, w);
+  
+  // 1. Si es una dirección (ej: "abrir oeste con 1234")
+  if(d){
+    return unlock(t, w);
+  }
+  
+  // 2. Si no es dirección, busca contenedores
   if(L() == 'on'){
     let roomItems = RM().items.map(it).filter(Boolean);
     let x = fnd(inv().concat(roomItems), t);
@@ -252,18 +278,32 @@ function abrirCmd(a){
 }
 function closeCont(x, w, echaLlave){
   let c = cs(x);
-  if(fh(x, 'superficie') || x.noClose) return out(`${x.name} no se puede cerrar.`, 'w');
+  
+  // Si el objeto es una superficie o no es un contenedor cerrado por naturaleza
+  if(fh(x, 'superficie') || x.noClose){
+    return out(`${x.name} no se puede cerrar.`, 'w');
+  }
+
   if(!c.open) return out(`${x.name} ya está cerrado.`);
+
+  // CÓDIGO: Se bloquea automáticamente al cerrar
   if(x.cl == 'code'){
-    c.open = false; c.unl = false;
+    c.open = false;
+    c.unl = false;
     return out(`Cierras ${x.name}. El pestillo de combinación salta y se bloquea automáticamente.`, 'ok');
   }
+
+  // LLAVE: Petición explícita de echar llave
   if(x.cl == 'key' && echaLlave){
     let k = inv().filter(i=>fh(i,'llave')).find(i=>(!w||nz(i.name).includes(nz(w)))&&(i.master||(i.opens||[]).includes('i:'+x.id)));
     if(!k) return out(`No tienes ninguna llave que encaje para echar el cerrojo a ${x.name}.`, 'w');
-    c.open = false; c.unl = false;
+    
+    c.open = false;
+    c.unl = false;
     return out(`Cierras ${x.name} y usas ${k.name} para echar el cerrojo con llave.`, 'ok');
   }
+
+  // Cierre normal
   c.open = false;
   out(`Cierras ${x.name}.`, 'ok');
 }
@@ -273,38 +313,64 @@ function cerrarCmd(a){
   let d = dirOf(t);
   let echaLlave = /llave/i.test(w) || !!w;
 
+  // 1. Salidas del mapa
   if(d){
     let r = R();
     let x = r.ex[d];
     if(x && G.rooms[x.to]){
-      if(!x.lock && !x.canClose && !x.code) return out(`El paso hacia el ${dn(d)} no tiene una puerta o mecanismo para cerrarse.`, 'w');
+      if(!x.lock && !x.canClose && !x.code){
+        return out(`El paso hacia el ${dn(d)} no tiene una puerta o mecanismo para cerrarse.`, 'w');
+      }
+
       S.xo = S.xo || {};
+
+      // Caso A: Puerta con CÓDIGO (se bloquea sola al cerrar)
       if(x.code){
-        S.xo[S.room + d] = 0; delete S.unl[S.room + d];
-        if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; delete S.unl[x.to + OP[d]]; }
+        S.xo[S.room + d] = 0;
+        delete S.unl[S.room + d];
+        if(OP[d] && G.rooms[x.to].ex[OP[d]]){
+          S.xo[x.to + OP[d]] = 0;
+          delete S.unl[x.to + OP[d]];
+        }
         return out(`Cierras la puerta hacia el ${dn(d)}. El pestillo de combinación se bloquea automáticamente.`, 'ok');
       }
+
+      // Caso B: Puerta con LLAVE
       if(x.lock){
         if(echaLlave){
           let ks = inv().filter(i => fh(i, 'llave'));
           let k = ks.find(i => (!w || nz(i.name).includes(nz(w))) && (i.master || (i.opens || []).includes(S.room + ':' + d)));
-          if(!k) return out(`No tienes ninguna llave que encaje para echar el cerrojo a la salida «${dn(d)}».`, 'w');
-          S.xo[S.room + d] = 0; delete S.unl[S.room + d];
-          if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; delete S.unl[x.to + OP[d]]; }
+          if(!k){
+            return out(`No tienes ninguna llave que encaje para echar el cerrojo a la salida «${dn(d)}».`, 'w');
+          }
+          S.xo[S.room + d] = 0;
+          delete S.unl[S.room + d]; // Echa la llave (exigirá llave al abrir)
+          if(OP[d] && G.rooms[x.to].ex[OP[d]]){
+            S.xo[x.to + OP[d]] = 0;
+            delete S.unl[x.to + OP[d]];
+          }
           return out(`Cierras el paso hacia el ${dn(d)} y usas ${k.name} para echar el cerrojo.`, 'ok');
         } else {
+          // Solo entorna la puerta (sin echar la llave)
           S.xo[S.room + d] = 0;
-          if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; }
+          if(OP[d] && G.rooms[x.to].ex[OP[d]]){
+            S.xo[x.to + OP[d]] = 0;
+          }
           return out(`Cierras la puerta hacia el ${dn(d)} (sin echar la llave).`, 'ok');
         }
       }
+
+      // Caso C: Puerta normal
       S.xo[S.room + d] = 0;
-      if(OP[d] && G.rooms[x.to].ex[OP[d]]){ S.xo[x.to + OP[d]] = 0; }
+      if(OP[d] && G.rooms[x.to].ex[OP[d]]){
+        S.xo[x.to + OP[d]] = 0;
+      }
       return out(`Cierras el paso hacia el ${dn(d)}.`, 'ok');
     }
     return out(`No hay ninguna salida al ${dn(d)} que puedas cerrar.`, 'w');
   }
 
+  // 2. Objetos contenedores
   if(L() == 'on'){
     let roomItems = RM().items.map(it).filter(Boolean);
     let x = fnd(inv().concat(roomItems), t);
@@ -331,12 +397,15 @@ function drop(q){let x=fnd(inv(),q);if(!x)return out('No tienes eso.','w');MV(x.
 function invy(){let c={};S.inv.filter(i=>it(i)&&!hid(it(i))).forEach(i=>c[i]=(c[i]||0)+1);out('🎒 Inventario:\n'+(Object.keys(c).map(i=>`• ${it(i).name}${RL(it(i))}${c[i]>1?' x'+c[i]:''}${S.arma==i?' [arma]':''}${S.armadura==i?' [armadura]':''}`).join('\n')||'(vacío)')+'\n🪙 Oro: '+S.gold)}
 function leer(q){
   let nq = nz(q);
+  // Si pides leer la libreta, redirige a las anotaciones del jugador
   if (nq.includes('libreta') || nq.includes('mi libreta')) {
     return out('📒 Anotaciones:\n' + (S.mine.map((x, k) => `${k + 1}. ${x}`).join('\n') || '(vacía)'));
   }
+  
   if(!S.notes.length) return out('No tienes notas narrativas encontradas.');
   if(L()=='off') return out('Está demasiado oscuro para leer.','w');
   if(/todas?/.test(q)) return S.notes.forEach(n=>out(`Nota ${n.id}: ${n.txt}`));
+  
   let dg=q.match(/\d+/),n;
   if(dg) n=S.notes.find(n=>n.id==dg[0]);
   else { n=S.notes[S.np%S.notes.length]; S.np++; }
@@ -345,10 +414,14 @@ function leer(q){
 function anot(t){
   let ds=inv().filter(i=>fh(i,'notas'));
   if(!ds.length) return out('Necesitas una libreta o un smartphone para anotar.','w');
+  
+  // Acepta si no es libreta (ej. smartphone) O si en el inventario hay algún objeto con función 'escribir' o que se llame 'lapiz' (compatibilidad previa)
   let tieneUtensilio = inv().some(i => fh(i, 'escribir') || /lapiz/.test(nz(i.name)));
   let d = ds.find(i => i.dev != 'libreta') || (tieneUtensilio ? ds[0] : 0);
+  
   if(!d) return out('La libreta exige tener algo con qué escribir en tu inventario (un lápiz, bolígrafo, etc.).','w');
   if(!t) return out('Uso: anotar <texto>');
+  
   S.mine.push(t);
   out(`Anotas en ${d.name}: "${t}"`,'ok');
 }
@@ -382,6 +455,7 @@ MV=(id,d,src)=>{let ks=KD(id,src);R1(id,src);ks.forEach(k=>R1(k,src));[id].conca
 DS=x=>{if(x.dv)for(let l of RU.L(x.dv)){let i=l.indexOf('|');if(i>0&&RU.chk(l.slice(0,i).split('&').join('\n')))return l.slice(i+1).trim()}return x.desc},
 RL=i=>{let p=par(i),y=p&&it(p);return y?' ('+(fh(y,'contenedor')?'en ':'sobre ')+y.name+')':''};
 /* ---------- REGLAS, BANDERAS Y CONDICIONES ---------- */
+/* ---------- MANUAL (ventana con selector) ---------- */
 function openManual(q){let ms=(G.manual||[]).filter(c=>c&&(c.title||c.text));if(!ms.length)return out('Esta aventura no tiene manual.','w');
 let n=nz(q||''),i=Math.max(0,n?ms.findIndex(c=>nz(c.title).includes(n)):0),old=document.getElementById('mn');old&&old.remove();
 let o=document.createElement('div');o.id='mn';
@@ -389,7 +463,7 @@ o.innerHTML=`<div role=dialog><div class=mh><b>📖 ${esc(G.manualTitle||'Manual
 const sh=k=>{let t=o.querySelector('#mt');t.textContent=ms[k].text||'';t.scrollTop=0},kd=e=>{if(e.key=='Escape'){e.stopPropagation();cl()}},cl=()=>{document.removeEventListener('keydown',kd,true);o.remove()};
 o.querySelector('#ms').value=i;sh(i);o.querySelector('#ms').onchange=e=>sh(+e.target.value);o.querySelector('#mx').onclick=cl;o.onmousedown=e=>{if(e.target==o)cl()};
 document.addEventListener('keydown',kd,true);document.body.append(o);out('Abres el manual.','c')}
-/* ---------- PNJ AVANZADOS ---------- */
+/* ---------- PNJ AVANZADOS (módulo 6) ---------- */
 const NS=id=>{S.nst=S.nst||{};let s=S.nst[id];if(!s){let n=G.npcs[id]||{};s=S.nst[id]={inv:String(n.inv||'').split(',').map(q=>RU.item(q.trim())).filter(Boolean).map(x=>x.id),c:0,off:0}}return s},
 NX=id=>Object.keys(G.npcs).forEach(k=>{let s=NS(k);s.inv=s.inv.filter(x=>x!=id)}),
 NI=id=>NS(id).inv.map(it).filter(Boolean),
@@ -434,6 +508,7 @@ xo:(rid,d)=>{
   if(!x) return false;
   let o=(S.xo||{})[rid+d];
   if(o!==undefined) return !!o;
+  // Si tiene candado o código y no ha sido desbloqueada, está cerrada
   let isLocked = (x.lock || !!x.code) && !S.unl[rid+d];
   return !isLocked;
 },
@@ -455,32 +530,71 @@ else if(['var','timer','turnos','puntos'].includes(k)){let m=v.match(/^(.*?)\s*(
 if(!m)r=k=='timer'?val!==null:!!val;else if(val===null)r=false;else{let n=+m[3],o=m[2];r=o=='>='?val>=n:o=='<='?val<=n:o=='>'?val>n:o=='<'?val<n:val==n}}
 else return true;
 return r!=ng},
-chk:t=>RU.L(t).every(l=>RU.ok(RU.sub(l))),
-do:l=>{let i=l.indexOf(':');if(i<0)return;let k=nz(l.slice(0,i)),v=l.slice(i+1).trim(),a=v.split('>').map(s=>s.trim()),x,rr;
-if(k=='di')out(v);
-else if(k=='activar')RU.F()[nz(v)]=1;
-else if(k=='desactivar')delete RU.F()[nz(v)];
-else if (k == 'mirar') { if (!nz(v) || nz(v) == 'sala') look(); else { x = RU.item(v); exam(x ? x.name : v); } }
-else if(k=='dar'){if(x=RU.item(v))RU.mv(x.id,'inv')}
-else if(k=='quitar'||k=='ocultar'){if(x=RU.item(v))RU.rm(x.id)}
-else if(k=='mover'){x=RU.item(a[0]);if(x){if(nz(a[1]||'')=='inventario')RU.mv(x.id,'inv');else if(rr=RU.room(a[1]))RU.mv(x.id,rr)}}
-else if(k=='abrir'||k=='cerrar'){rr=RU.room(a[0]);let d=rr&&RU.dir(rr,a[1]);if(d){S.xo=S.xo||{};let e=G.rooms[rr].ex[d],o=k=='abrir'?1:0;S.xo[rr+d]=o;let b=OP[d]&&G.rooms[e.to]&&G.rooms[e.to].ex[OP[d]];if(b&&b.to==rr)S.xo[e.to+OP[d]]=o}}
-else if(k=='ir'){rr=RU.room(v);if(rr&&(RU.dp||0)<4){S.prev=S.room;S.room=rr;S.on='';look();enter();RU.on('enter')}}
-else if(k=='luz'){rr=RU.room(a[0]);if(rr&&/^(on|off|partial)$/.test(a[1]))S.light[rr]=a[1]}
-else if(k=='danar'){S.hp-=+v||0;if(S.hp<=0)die()}else if(k=='curar')S.hp=Math.min(S.mhp,S.hp+(+v||0));
-else if(k=='fijar'||k=='sumar'){let p=v.split('='),n=nz(p[0]),x=p.length>1?+p[1]:1;if(n)RU.V()[n]=k=='fijar'?x:(RU.V()[n]||0)+x}
-else if(k=='iniciar'){let p=v.split('='),n=nz(p[0]);if(n){S.tm=S.tm||{};S.tm[n]=Math.max(1,+p[1]||1)+(RU.it?0:1)}}
-else if(k=='cancelar'){if(S.tm)delete S.tm[nz(v)]}
-else if(k=='puntos'){if(G.scoreOn){let n=+a[0]||0,key=a[1];S.pk=S.pk||{};if(!(key&&S.pk[key])){if(key)S.pk[key]=1;S.pts=(S.pts||0)+n;if(n)out(`[Tu puntuación ${n>0?'sube':'baja'} en ${Math.abs(n)} punto${Math.abs(n)==1?'':'s'}.]`,'c')}}}
-else if(/^pnj/.test(k)){let n=RU.npc(a[0]);if(n){let s=NS(n.id),w=NR(n.id),y=a[1]?RU.item(a[1]):null;
-if(k=='pnj'){let q=nz(a[1]||''),rr=q=='fuera'||q=='nada'?'':RU.room(a[1]);if(q=='fuera'||q=='nada'||(rr&&G.rooms[rr])){if(w)S.rm[w].npcs=S.rm[w].npcs.filter(x=>x!=n.id);if(rr)S.rm[rr].npcs.push(n.id)}}
-else if(k=='pnjdar'&&y){RU.rm(y.id);s.inv.push(y.id)}
-else if(k=='pnjtomar'&&y&&w&&S.rm[w].items.includes(y.id)){RU.rm(y.id);s.inv.push(y.id)}
-else if(k=='pnjsoltar'&&w){let l=a[1]?(y&&s.inv.includes(y.id)?[y.id]:[]):s.inv.slice();s.inv=s.inv.filter(i=>!l.includes(i));l.forEach(i=>{S.rm[w].items.push(i);S.rev[i]=1;SI()[i]=''})}
-else if(k=='pnjentregar'&&y&&s.inv.includes(y.id)){s.inv=s.inv.filter(i=>i!=y.id);S.inv.push(y.id);S.rev[y.id]=1;SI()[y.id]=''}
-else if(k=='pnjruta')s.off=/^(off|no|0)$/.test(nz(a[1]||''))?1:0}}
-else if(k=='manual')openManual(v);
-else if(k=='fin'){out(v,'k');S.over=1}else if(k=='seguir')RU.go=1},
+chk: t => {
+  let lines = RU.L(t);
+  if (!lines.length) return true;
+  
+  // Cada línea debe tener todas sus condiciones unidas por '|' cumplidas
+  return lines.every(l => {
+    let subConds = l.split('|').map(c => c.trim()).filter(Boolean);
+    return subConds.every(c => RU.ok(RU.sub(c)));
+  });
+},
+do: l => {
+  let effs = l.split('|');
+  effs.forEach(singleEff => {
+    let eff = singleEff.trim();
+    let i = eff.indexOf(':');
+    if (i < 0) return;
+    let k = nz(eff.slice(0, i)), v = eff.slice(i + 1).trim(), a = v.split('>').map(s => s.trim()), x, rr;
+    
+    if (k == 'di') out(v);
+    else if (k == 'activar') RU.F()[nz(v)] = 1;
+    else if (k == 'desactivar') delete RU.F()[nz(v)];
+    else if (k == 'mirar') { if (!nz(v) || nz(v) == 'sala') look(); else { x = RU.item(v); exam(x ? x.name : v); } }
+    else if (k == 'dar') { if (x = RU.item(v)) RU.mv(x.id, 'inv'); }
+    else if (k == 'quitar' || k == 'ocultar') { if (x = RU.item(v)) RU.rm(x.id); }
+    else if (k == 'mover') { 
+  let targetStr = RU.sub(a[0]);
+  let destStr = RU.sub(a[1] || '');
+  
+  x = RU.item(targetStr); 
+  if (x) { 
+    let destClean = nz(destStr);
+    if (destClean == 'inventario' || destClean == 'inv') {
+      RU.mv(x.id, 'inv');
+      SI()[x.id] = '';
+    } else {
+      let destObj = RU.item(destStr);
+      if (destObj && (fh(destObj, 'contenedor') || fh(destObj, 'superficie'))) {
+        let loc = S.inv.includes(destObj.id) ? 'inv' : (RM().items.includes(destObj.id) ? S.room : (LOC(destObj.id) || S.room));
+        RU.mv(x.id, loc);
+        SI()[x.id] = destObj.id;
+        S.rev[x.id] = 1;
+      } else if (rr = RU.room(destStr)) {
+        RU.mv(x.id, rr);
+        SI()[x.id] = '';
+        let pp = x.on || x.into;
+        if (pp && S.rm[rr].items.includes(pp)) SI()[x.id] = pp;
+      }
+    }
+  } 
+}
+    else if (k == 'abrir' || k == 'cerrar') { rr = RU.room(a[0]); let d = rr && RU.dir(rr, a[1]); if (d) { S.xo = S.xo || {}; let e = G.rooms[rr].ex[d], o = k == 'abrir' ? 1 : 0; S.xo[rr + d] = o; let b = OP[d] && G.rooms[e.to] && G.rooms[e.to].ex[OP[d]]; if (b && b.to == rr) S.xo[e.to + OP[d]] = o; } }
+    else if (k == 'ir') { rr = RU.room(v); if (rr && (RU.dp || 0) < 4) { S.prev = S.room; S.room = rr; S.on = ''; look(); enter(); RU.on('enter'); } }
+    else if (k == 'luz') { rr = RU.room(a[0]); if (rr && /^(on|off|partial)$/.test(a[1])) S.light[rr] = a[1]; }
+    else if (k == 'danar') { S.hp -= +v || 0; if (S.hp <= 0) die(); }
+    else if (k == 'curar') S.hp = Math.min(S.mhp, S.hp + (+v || 0));
+    else if (k == 'fijar' || k == 'sumar') { let p = v.split('='), n = nz(p[0]), x = p.length > 1 ? +p[1] : 1; if (n) RU.V()[n] = k == 'fijar' ? x : (RU.V()[n] || 0) + x; }
+    else if (k == 'iniciar') { let p = v.split('='), n = nz(p[0]); if (n) { S.tm = S.tm || {}; S.tm[n] = Math.max(1, +p[1] || 1) + (RU.it ? 0 : 1); } }
+    else if (k == 'cancelar') { if (S.tm) delete S.tm[nz(v)]; }
+    else if (k == 'puntos') { if (G.scoreOn) { let n = +a[0] || 0, key = a[1]; S.pk = S.pk || {}; if (!(key && S.pk[key])) { if (key) S.pk[key] = 1; S.pts = (S.pts || 0) + n; if (n) out(`[Tu puntuación ${n > 0 ? 'sube' : 'baja'} en ${Math.abs(n)} punto${Math.abs(n) == 1 ? '' : 's'}.]`, 'c'); } } }
+    else if (/^pnj/.test(k)) { let n = RU.npc(a[0]); if (n) { let s = NS(n.id), w = NR(n.id), y = a[1] ? RU.item(a[1]) : null; if (k == 'pnj') { let q = nz(a[1] || ''), rr = q == 'fuera' || q == 'nada' ? '' : RU.room(a[1]); if (q == 'fuera' || q == 'nada' || (rr && G.rooms[rr])) { if (w) S.rm[w].npcs = S.rm[w].npcs.filter(x => x != n.id); if (rr) S.rm[rr].npcs.push(n.id); } } else if (k == 'pnjdar' && y) { RU.rm(y.id); s.inv.push(y.id); } else if (k == 'pnjtomar' && y && w && S.rm[w].items.includes(y.id)) { RU.rm(y.id); s.inv.push(y.id); } else if (k == 'pnjsoltar' && w) { let l = a[1] ? (y && s.inv.includes(y.id) ? [y.id] : []) : s.inv.slice(); s.inv = s.inv.filter(i => !l.includes(i)); l.forEach(i => { S.rm[w].items.push(i); S.rev[i] = 1; SI()[i] = ''; }); } else if (k == 'pnjentregar' && y && s.inv.includes(y.id)) { s.inv = s.inv.filter(i => i != y.id); S.inv.push(y.id); S.rev[y.id] = 1; SI()[y.id] = ''; } else if (k == 'pnjruta') s.off = /^(off|no|0)$/.test(nz(a[1] || '')) ? 1 : 0; } }
+    else if (k == 'manual') openManual(v);
+    else if (k == 'fin') { out(v, 'k'); S.over = 1; }
+    else if (k == 'seguir') RU.go = 1;
+  });
+},
 norm:s=>{let w=nz(s).replace(/[¿?¡!.,;]/g,' ').split(/\s+/).filter(x=>x&&!/^(el|la|los|las|un|una)$/.test(x));if(w[0]&&AL[w[0]])w[0]=AL[w[0]];return w.join(' ')},
 m:(p,n)=>p.includes('*')?new RegExp('^'+p.split('*').map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+'$').test(n):p==n,
 sub:l=>{let c=RU.ctx;return c?l.replace(/\$n1/g,c.n1||'').replace(/\$n2/g,c.n2||'').replace(/\$1/g,c.o1||'').replace(/\$2/g,c.o2||''):l},
@@ -492,9 +606,11 @@ try1: r => {
   if (hasSi) {
     let executedAny = false;
     RU.go = 0;
+
     whenLines.forEach((wLine, idx) => {
       let isSi = /^si\s*:/i.test(wLine);
       let cond = isSi ? wLine.replace(/^si\s*:\s*/i, '') : wLine;
+
       if (RU.chk(cond)) {
         let eff = thenLines[idx];
         if (eff) {
@@ -514,6 +630,7 @@ try1: r => {
     return executedAny ? (RU.go ? 2 : 1) : 0;
   }
 
+  // Comportamiento estándar de siempre
   let ok = RU.chk(r.when), L = ok ? r.then : r.els;
   if (!ok && !RU.L(r.els).length) return 0;
   RU.go = 0;
@@ -559,7 +676,7 @@ cmd: raw => {
 tick:()=>{S.turns=(S.turns||0)+1;let ex=[];S.tm=S.tm||{};for(let k in S.tm)if(--S.tm[k]<=0){delete S.tm[k];ex.push(k)}RU.it=1;try{ex.forEach(k=>RU.on('timer',k));if(G)Object.keys(G.npcs).forEach(npcStep);RU.on('turno')}finally{RU.it=0}},
 on:(tr,nm)=>{if(!G||(RU.dp||0)>3)return;RU.dp=(RU.dp||0)+1;S.fired=S.fired||{};for(let r of G.rules||[]){if(r.on!=tr||(nm!==undefined&&nz(r.pat||'')!=nz(nm))||(r.once&&S.fired[r.id]))continue;if(RU.chk(r.when)){RU.L(r.then).forEach(RU.do);if(r.once)S.fired[r.id]=1}}RU.dp--}
 };
-/* ---------- VERBOS ---------- */
+/* ---------- VERBOS (paquete general + verbos propios) ---------- */
 const PACK=[['empujar','mover,presionar,desplazar',1,'','Empujas {1}, pero no ocurre nada.'],['jalar','halar,tirar de',1,'','Jalas {1}, pero no ocurre nada.'],['lanzar','arrojar,tirar',1,'','No consigues nada lanzando {1}.'],['girar','rotar,voltear',1,'','Giras {1}, pero no ocurre nada.'],
 ['poner','meter,colocar,introducir,insertar',2,'en|sobre|dentro de|encima de','No puedes poner {1} ahí.'],['dar','entregar,ofrecer',2,'a','No ocurre nada al dar {1}.'],['atar','amarrar',2,'a|en|con','No puedes atar {1} a eso.'],['desatar','desamarrar',1,'','No hay nada que desatar.'],
 ['cavar','excavar',3,'con','No consigues cavar ahí.'],['cortar','rajar',3,'con','No consigues cortar {1}.'],['quemar','incendiar',3,'con','No consigues quemar {1}.'],['romper','destrozar,quebrar',3,'con','No consigues romper {1}.'],['llenar','',3,'con','No puedes llenar {1}.'],['vaciar','',1,'','No hay nada que vaciar.'],
@@ -572,7 +689,7 @@ tk:s=>nz(s).replace(/[¿?¡!.,;]/g,' ').split(/\s+/).filter(x=>x&&!/^(el|la|los|
 art:n=>{let w=n.split(' ')[0];return(/as$/i.test(w)?'las ':/s$/i.test(w)?'los ':/a$/i.test(w)?'la ':'el ')+n},
 verb:t=>{let b=null,bl=0;for(let v of VB.all())for(let p of (v.name+','+(v.syn||'')).split(',')){let w=VB.tk(p);if(w.length>bl&&w.every((x,i)=>t[i]===x)){b=v;bl=w.length}}return b&&{v:b,n:bl}},
 split:(rest,v)=>{let ps=String(v.prep||'').split('|').map(VB.tk).filter(p=>p.length);for(let i=1;i<rest.length;i++)for(let p of ps)if(p.every((x,j)=>rest[i+j]===x))return[rest.slice(0,i),rest.slice(i+p.length)];return[rest,[]]},
-ent:ws=>{if(!ws.length)return null;let q=ws.join(' '),on=L()=='on',x=fnd(on?inv().concat(vis()):inv(),q);if(x)return{id:x.id,name:x.name};if(on){let n=fnd(RM().npcs.map(i=>G.npcs[i]),q);if(n)return{id:n.id,name:n.name}}return null},
+ent:ws=>{if(!ws.length)return null;let q=ws.join(' '),on=L()=='on',x=fnd(on?inv().concat(RM().items.map(it).filter(i=>i&&canSee(i)&&!(i.under&&!S.rev[i.id]&&!(S.ins&&i.id in S.ins)))):inv(),q);if(x)return{id:x.id,name:x.name};if(on){let n=fnd(RM().npcs.map(i=>G.npcs[i]),q);if(n)return{id:n.id,name:n.name}}return null},
 put:(a,b)=>{let x=it(a.id),y=it(b.id);if(!x||!y)return false;let c=fh(y,'contenedor'),sf=fh(y,'superficie');if(!c&&!sf)return false;if(!S.inv.includes(x.id))return out(`No tienes ${VB.art(x.name)}.`,'w'),true;
 for(let p=y;p;p=par(p)?it(par(p)):null)if(p.id==x.id)return out('No puedes hacer eso.','w'),true;if(c&&!cs(y).open)return out(`${VB.art(y.name)} está cerrado.`.replace(/^./,m=>m.toUpperCase()),'w'),true;
 MV(x.id,S.inv.includes(y.id)?'inv':S.room,'inv');SI()[x.id]=y.id;S.rev[x.id]=1;if(S.arma==x.id)S.arma='';if(S.armadura==x.id)S.armadura='';return out(`Pones ${VB.art(x.name)} ${c?'en':'sobre'} ${VB.art(y.name)}.`,'ok'),true},
@@ -611,7 +728,7 @@ const HELP='Comandos disponibles:\n' +
 '• Sistema: estado · puntos · turnos · creditos · ? (ayuda)';
 const NT=['?','creditos','estado','inventario','notas','libreta','fotos','salidas','puntos','turnos'];
 const SCT=()=>{let m=G.scoreMax?' de '+G.scoreMax:'',rk=String(G.ranks||'').split('\n').map(l=>l.split('|')).filter(p=>p.length>1&&!isNaN(parseInt(p[0]))).map(p=>[parseInt(p[0]),p[1].trim()]).sort((a,b)=>b[0]-a[0]).find(p=>(S.pts||0)>=p[0]);return`Tu puntuación es ${S.pts||0}${m} en ${S.turns||0} turnos.`+(rk?' Rango: '+rk[1]+'.':'')};
-const AL={credito:'creditos',about:'creditos',puntuacion:'puntos',score:'puntos',turno:'turnos',m:'mirar',ver:'mirar',examinar:'mirar',l:'mirar',tomar:'coger',agarrar:'coger',recoger:'coger',dejar:'soltar',i:'inventario',inv:'inventario',u:'usar',prender:'encender',h:'hablar',luchar:'atacar',pelear:'atacar',a:'atacar',galeria:'fotos',ayuda:'?',escribir:'anotar',desbloquear:'abrir',sacar:'coger',accionar:'pulsar',sentarme:'sentarse',sentar:'sentarse',sientate:'sentarse',acostarme:'acostarse',acuestate:'acostarse',tumbarme:'tumbarse',salida:'salidas',beber:'consumir',comer:'consumir', eliminar: 'borrar', limpiar: 'borrar'},
+const AL={credito:'creditos',about:'creditos',puntuacion:'puntos',score:'puntos',turno:'turnos',m:'mirar',ver:'mirar',examinar:'mirar',l:'mirar',tomar:'coger',agarrar:'coger',recoger:'coger',dejar:'soltar',i:'inventario',inv:'inventario',u:'usar',prender:'encender',h:'hablar',luchar:'atacar',pelear:'atacar',a:'atacar',galeria:'fotos',ayuda:'?',escribir:'anotar',desbloquear:'abrir',sacar:'coger',accionar:'pulsar',sentarme:'sentarse',sentar:'sentarse',sientate:'sentarse',acostarme:'acostarse',acuestate:'acostarse',tumbarme:'tumbarse',salida:'salidas',beber:'consumir',comer:'consumir', eliminar: 'borrar', limpiar: 'borrar', bloquear:'cerrar', tapar:'cerrar'},
 PM={levantarse:'Levantado',levantar:'Levantado',sentarse:'Sentado',acostarse:'Acostado',tumbarse:'Acostado',agacharse:'Agachado',hincarse:'Hincado',arrodillarse:'Hincado',gatas:'A gatas'};
 function run(t,raw){raw=raw||t;t=nz(t).replace(/^(ponerse|ponte)\s+/,'').replace(/^a gatas$/,'gatas');if(!t)return;S.nt=1;let[v,...r]=t.split(/\s+/),a=r.join(' ').replace(/^((el|la|los|las|un|una|de|del|con|a|al|en)\s+)+/,'');v=AL[v]||v;S.nt=NT.includes(v)?1:0;if(!S.fight&&(RU.cmd(raw)||VB.run(raw)))return;
 if(S.fight){let F={atacar:()=>pAtk(0),habilidad:()=>pAtk(1),defender:()=>{S.fight.df=1;S.en=Math.min(S.men,S.en+2);out('Te cubres: recibirás menos daño y recuperas energía.');enemy()},huir:flee,usar:()=>use(a),estado:status,'?':()=>out(HELP)}[v];F?F():(S.nt=1,out('En combate: atacar, habilidad, defender, huir, usar <objeto>.','w'));return}
