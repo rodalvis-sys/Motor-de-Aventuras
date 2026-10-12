@@ -8634,7 +8634,7 @@
     "name": "espejo",
     "desc": "",
     "fn": "none",
-    "fijo": false,
+    "fijo": true,
     "under": "",
     "nid": 1,
     "txt": "",
